@@ -6,8 +6,15 @@ import asyncio
 import time
 import json
 from typing import Dict, List, Optional, AsyncGenerator
-import httpx
-import ollama
+# Optional dependencies
+try:
+    import httpx  # type: ignore
+except Exception:  # pragma: no cover
+    httpx = None  # type: ignore
+try:
+    import ollama  # type: ignore
+except Exception:  # pragma: no cover
+    ollama = None  # type: ignore
 from loguru import logger
 
 
@@ -31,6 +38,8 @@ class AIManager:
         """Initialize AI manager and check models"""
         try:
             # Initialize Ollama client
+            if ollama is None:
+                raise RuntimeError("ollama package is not installed")
             self.ollama_client = ollama.AsyncClient(host=self.ollama_host)
             
             # Check available models
@@ -52,7 +61,9 @@ class AIManager:
     async def check_health(self) -> Dict:
         """Check Ollama service health"""
         try:
-            async with httpx.AsyncClient() as client:
+            if httpx is None:
+                return {"status": "unhealthy", "error": "httpx not installed"}
+            async with httpx.AsyncClient() as client:  # type: ignore
                 response = await client.get(f"{self.ollama_host}/api/tags", timeout=5.0)
                 if response.status_code == 200:
                     return {"status": "healthy", "models_count": len(self.available_models)}
@@ -181,7 +192,7 @@ class AIManager:
             messages.append({"role": "user", "content": prompt})
             
             # Stream the response
-            async for chunk in await self.ollama_client.chat(
+            async for chunk in self.ollama_client.chat(
                 model=model,
                 messages=messages,
                 options={"temperature": temperature},

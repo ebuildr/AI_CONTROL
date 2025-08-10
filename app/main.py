@@ -16,9 +16,7 @@ from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks, UploadFile
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
-import httpx
-import ollama
+import platform
 from loguru import logger
 
 # Import our custom modules
@@ -172,7 +170,7 @@ async def chat_with_ai(request: ChatRequest):
             prompt=request.prompt,
             system_prompt=request.system_prompt,
             temperature=request.temperature,
-            stream=request.stream
+            stream=False  # force non-streaming for this endpoint
         )
         
         return ChatResponse(
@@ -205,7 +203,7 @@ async def chat_stream(request: ChatRequest):
                 yield f"data: {json.dumps(chunk)}\n\n"
             yield "data: [DONE]\n\n"
         
-        return StreamingResponse(generate(), media_type="text/plain")
+        return StreamingResponse(generate(), media_type="text/event-stream")
         
     except Exception as e:
         logger.error(f"Streaming error: {e}")
@@ -294,9 +292,11 @@ async def get_running_processes():
 
 
 @app.get("/pc/files")
-async def list_files(path: str = "C:\\"):
+async def list_files(path: Optional[str] = None):
     """List files in directory"""
     try:
+        if not path:
+            path = "C:\\" if platform.system() == "Windows" else "/"
         files = await pc_controller.list_files(path)
         return {"path": path, "files": files}
     except Exception as e:

@@ -13,8 +13,13 @@ from datetime import datetime
 from typing import Dict, List, Optional, Any
 from pathlib import Path
 import psutil
-import winshell
 from loguru import logger
+
+# Optional Windows-specific module
+try:
+    import winshell  # type: ignore
+except Exception:  # pragma: no cover
+    winshell = None  # type: ignore
 
 # Windows-specific imports
 if platform.system() == "Windows":
