@@ -59,6 +59,10 @@ openvino==2025.2.0
 onnxruntime-directml==1.19.2
 pydantic-settings==2.1.0
 
+# GPU monitoring and acceleration
+nvidia-ml-py3==7.352.0
+pyopencl==2025.1
+
 # Additional utilities
 colorama==0.4.6
 rich==13.7.0

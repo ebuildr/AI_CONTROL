@@ -77,10 +77,24 @@ class NPUManager:
     async def _detect_intel_npu(self) -> Optional[Dict]:
         """Detect Intel NPU (AI Boost)"""
         try:
-            # Check via PowerShell WMI
+            # First check processor model for NPU capability (more reliable)
+            processor_info = await self._get_processor_info()
+            logger.info(f"🔍 Processor detected: {processor_info}")
+            
+            if processor_info and ("Ultra" in processor_info or "285HX" in processor_info):
+                # Intel Core Ultra processors have integrated NPU
+                return {
+                    "type": "Intel NPU (Integrated)",
+                    "name": f"Intel AI Boost NPU in {processor_info}",
+                    "device_id": "integrated",
+                    "vendor": "Intel",
+                    "status": "Available"
+                }
+            
+            # Also check via PowerShell WMI for dedicated NPU devices
             cmd = [
                 "powershell", "-Command",
-                "Get-WmiObject -Class Win32_PnPEntity | Where-Object {$_.Name -like '*AI Boost*' -or $_.Name -like '*NPU*'} | ConvertTo-Json"
+                "Get-WmiObject -Class Win32_PnPEntity | Where-Object {$_.Name -like '*AI Boost*' -or $_.Name -like '*NPU*' -or $_.Name -like '*Neural*'} | ConvertTo-Json"
             ]
             
             result = await asyncio.create_subprocess_exec(
@@ -91,31 +105,24 @@ class NPUManager:
             
             stdout, stderr = await result.communicate()
             
-            if result.returncode == 0 and stdout:
-                devices = json.loads(stdout.decode())
-                if isinstance(devices, dict):
-                    devices = [devices]
-                
-                for device in devices:
-                    if 'AI Boost' in device.get('Name', '') or 'NPU' in device.get('Name', ''):
-                        return {
-                            "type": "Intel NPU",
-                            "name": device.get('Name', 'Intel AI Boost'),
-                            "device_id": device.get('DeviceID', ''),
-                            "vendor": "Intel",
-                            "status": device.get('Status', 'Unknown')
-                        }
-            
-            # Check processor model for NPU capability
-            processor_info = await self._get_processor_info()
-            if processor_info and "Ultra" in processor_info:
-                return {
-                    "type": "Intel NPU (Integrated)",
-                    "name": f"Intel NPU in {processor_info}",
-                    "device_id": "integrated",
-                    "vendor": "Intel",
-                    "status": "Available"
-                }
+            if result.returncode == 0 and stdout.strip():
+                try:
+                    devices = json.loads(stdout.decode())
+                    if isinstance(devices, dict):
+                        devices = [devices]
+                    
+                    for device in devices:
+                        device_name = device.get('Name', '')
+                        if any(keyword in device_name for keyword in ['AI Boost', 'NPU', 'Neural']):
+                            return {
+                                "type": "Intel NPU",
+                                "name": device_name,
+                                "device_id": device.get('DeviceID', ''),
+                                "vendor": "Intel",
+                                "status": device.get('Status', 'Available')
+                            }
+                except json.JSONDecodeError:
+                    logger.debug("NPU WMI query returned non-JSON data")
                 
         except Exception as e:
             logger.debug(f"Intel NPU detection error: {e}")

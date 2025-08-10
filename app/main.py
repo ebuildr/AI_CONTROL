@@ -27,6 +27,7 @@ from app.core.pc_controller import PCController
 from app.core.web_browser import WebBrowserController
 from app.core.security import SecurityManager
 from app.core.npu_manager import NPUManager
+from app.core.gpu_manager import GPUManager
 from app.models.requests import ChatRequest, PCCommandRequest, WebBrowseRequest
 from app.models.responses import ChatResponse, PCCommandResponse, WebBrowseResponse
 from app.utils.config import get_settings
@@ -63,6 +64,7 @@ pc_controller = PCController()
 web_browser = WebBrowserController()
 security_manager = SecurityManager()
 npu_manager = NPUManager()
+gpu_manager = GPUManager()
 
 # Mount static files
 static_path = Path(__file__).parent / "static"
@@ -75,10 +77,11 @@ async def startup_event():
     """Initialize components on startup"""
     logger.info("🚀 Starting AI Control System...")
     
-    # Initialize NPU manager first (for hardware detection)
+    # Initialize hardware acceleration managers first
     await npu_manager.initialize()
+    await gpu_manager.initialize()
     
-    # Initialize AI models (with NPU acceleration if available)
+    # Initialize AI models (with hardware acceleration if available)
     await ai_manager.initialize()
     
     # Initialize PC controller
@@ -96,6 +99,7 @@ async def shutdown_event():
     logger.info("🛑 Shutting down AI Control System...")
     
     await npu_manager.cleanup()
+    await gpu_manager.cleanup()
     await ai_manager.cleanup()
     await pc_controller.cleanup()
     await web_browser.cleanup()
@@ -403,6 +407,55 @@ async def optimize_model_for_npu(model_name: str):
         return result
     except Exception as e:
         log_error_context(e, f"NPU model optimization failed for {model_name}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# GPU Management Endpoints
+@app.get("/gpu/status")
+@monitor_endpoint("gpu_status")
+async def get_gpu_status():
+    """Get GPU hardware status and capabilities"""
+    try:
+        status = await gpu_manager.get_gpu_status()
+        return status
+    except Exception as e:
+        log_error_context(e, "GPU status retrieval failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/gpu/performance")
+@monitor_endpoint("gpu_performance")
+async def get_gpu_performance():
+    """Get GPU performance metrics"""
+    try:
+        metrics = await gpu_manager.get_gpu_performance_metrics()
+        return metrics
+    except Exception as e:
+        log_error_context(e, "GPU performance metrics failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/gpu/benchmark")
+@monitor_endpoint("gpu_benchmark")
+async def run_gpu_benchmark():
+    """Run GPU benchmark tests"""
+    try:
+        results = await gpu_manager.benchmark_gpu()
+        return results
+    except Exception as e:
+        log_error_context(e, "GPU benchmark failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/gpu/optimize/{model_name}")
+@monitor_endpoint("gpu_optimize_model")
+async def optimize_model_for_gpu(model_name: str, gpu_type: str = "auto"):
+    """Optimize a specific model for GPU inference"""
+    try:
+        result = await gpu_manager.optimize_model_for_gpu(model_name, gpu_type)
+        return result
+    except Exception as e:
+        log_error_context(e, f"GPU model optimization failed for {model_name}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

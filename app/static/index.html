@@ -102,10 +102,10 @@
                         class="px-6 py-3 transition-colors">
                     📊 System Status
                 </button>
-                <button @click="activeTab = 'npu'" 
-                        :class="activeTab === 'npu' ? 'bg-white/20' : 'bg-transparent hover:bg-white/10'"
+                <button @click="activeTab = 'acceleration'" 
+                        :class="activeTab === 'acceleration' ? 'bg-white/20' : 'bg-transparent hover:bg-white/10'"
                         class="px-6 py-3 transition-colors">
-                    🧠 NPU Control
+                    ⚡ AI Acceleration
                 </button>
             </div>
         </div>
@@ -439,8 +439,8 @@
             </div>
         </div>
 
-        <!-- NPU Control Tab -->
-        <div class="tab-content" :class="activeTab === 'npu' ? 'active' : ''">
+        <!-- AI Acceleration Tab -->
+        <div class="tab-content" :class="activeTab === 'acceleration' ? 'active' : ''">
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <!-- NPU Status -->
                 <div class="glass-effect rounded-lg p-6">
@@ -521,13 +521,120 @@
                     </button>
                 </div>
 
-                <!-- NPU Model Optimization -->
-                <div class="glass-effect rounded-lg p-6 lg:col-span-2" x-show="npuStatus.npu_available">
+                <!-- GPU Status -->
+                <div class="glass-effect rounded-lg p-6">
+                    <h2 class="text-2xl font-bold text-white mb-4">🎮 GPU Status</h2>
+                    
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center">
+                            <span class="text-white">GPUs Available:</span>
+                            <div class="flex items-center space-x-2">
+                                <div class="w-3 h-3 rounded-full" :class="gpuStatus.gpus_available ? 'bg-green-400' : 'bg-red-400'"></div>
+                                <span class="text-white text-sm" x-text="gpuStatus.gpus_available ? 'Yes' : 'No'"></span>
+                            </div>
+                        </div>
+                        
+                        <div class="flex justify-between items-center">
+                            <span class="text-white">Device Count:</span>
+                            <span class="text-white text-sm" x-text="gpuStatus.device_count || 0"></span>
+                        </div>
+                        
+                        <div class="pt-4 border-t border-white/20" x-show="gpuStatus.gpus_available">
+                            <h3 class="text-white font-semibold mb-2">GPU Devices:</h3>
+                            <template x-for="device in gpuStatus.devices" :key="device.name">
+                                <div class="bg-white/10 rounded p-3 mb-2">
+                                    <div class="text-white font-medium" x-text="device.name"></div>
+                                    <div class="text-white/70 text-sm">
+                                        <span x-text="device.vendor"></span> | 
+                                        <span x-text="device.type"></span>
+                                        <div x-show="device.memory_total">Memory: <span x-text="Math.round(device.memory_total / 1024 / 1024 / 1024) + ' GB'"></span></div>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                        
+                        <div class="pt-4 border-t border-white/20" x-show="gpuStatus.frameworks">
+                            <h3 class="text-white font-semibold mb-2">AI Frameworks:</h3>
+                            <div class="grid grid-cols-3 gap-2 text-sm">
+                                <div class="flex items-center space-x-1">
+                                    <div class="w-2 h-2 rounded-full" :class="gpuStatus.frameworks?.cuda ? 'bg-green-400' : 'bg-red-400'"></div>
+                                    <span class="text-white/80">CUDA</span>
+                                </div>
+                                <div class="flex items-center space-x-1">
+                                    <div class="w-2 h-2 rounded-full" :class="gpuStatus.frameworks?.opencl ? 'bg-green-400' : 'bg-red-400'"></div>
+                                    <span class="text-white/80">OpenCL</span>
+                                </div>
+                                <div class="flex items-center space-x-1">
+                                    <div class="w-2 h-2 rounded-full" :class="gpuStatus.frameworks?.directml ? 'bg-green-400' : 'bg-red-400'"></div>
+                                    <span class="text-white/80">DirectML</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button @click="refreshGPUStatus()" 
+                            class="w-full mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors">
+                        🔄 Refresh GPU Status
+                    </button>
+                </div>
+
+                <!-- GPU Performance -->
+                <div class="glass-effect rounded-lg p-6">
+                    <h2 class="text-2xl font-bold text-white mb-4">⚡ GPU Performance</h2>
+                    
+                    <div class="space-y-4" x-show="gpuStatus.gpus_available">
+                        <template x-for="device in gpuPerformance.devices" :key="device.device_id">
+                            <div class="bg-white/10 rounded p-3">
+                                <div class="text-white font-medium mb-2" x-text="device.name"></div>
+                                
+                                <div class="space-y-2">
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-white/70 text-sm">GPU Utilization:</span>
+                                        <div class="flex items-center space-x-2">
+                                            <div class="w-20 bg-white/20 rounded-full h-1">
+                                                <div class="bg-blue-500 h-1 rounded-full" :style="`width: ${device.gpu_utilization || 0}%`"></div>
+                                            </div>
+                                            <span class="text-white/70 text-xs" x-text="(device.gpu_utilization || 0) + '%'"></span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-white/70 text-sm">Memory:</span>
+                                        <div class="flex items-center space-x-2">
+                                            <div class="w-20 bg-white/20 rounded-full h-1">
+                                                <div class="bg-green-500 h-1 rounded-full" :style="`width: ${device.memory_used && device.memory_total ? (device.memory_used / device.memory_total * 100) : 0}%`"></div>
+                                            </div>
+                                            <span class="text-white/70 text-xs" x-text="device.memory_used && device.memory_total ? Math.round(device.memory_used / device.memory_total * 100) + '%' : 'N/A'"></span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="grid grid-cols-2 gap-2 text-xs text-white/60">
+                                        <div x-show="device.temperature">Temp: <span x-text="device.temperature + '°C'"></span></div>
+                                        <div x-show="device.power_usage">Power: <span x-text="device.power_usage + 'W'"></span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                    
+                    <div x-show="!gpuStatus.gpus_available" class="text-center text-white/70">
+                        No dedicated GPU detected. Using integrated graphics.
+                    </div>
+                    
+                    <button @click="runGPUBenchmark()" 
+                            x-show="gpuStatus.gpus_available"
+                            class="w-full mt-4 px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600 transition-colors">
+                        🏃 Run GPU Benchmark
+                    </button>
+                </div>
+
+                <!-- Model Optimization -->
+                <div class="glass-effect rounded-lg p-6 lg:col-span-2" x-show="npuStatus.npu_available || gpuStatus.gpus_available">
                     <h2 class="text-2xl font-bold text-white mb-4">🔧 Model Optimization</h2>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
-                            <label class="block text-white/70 text-sm font-medium mb-2">Select Model to Optimize:</label>
+                            <label class="block text-white/70 text-sm font-medium mb-2">Select Model:</label>
                             <select x-model="selectedOptimizeModel" class="w-full px-3 py-2 bg-white/20 text-white rounded border border-white/30">
                                 <template x-for="model in availableModels" :key="model">
                                     <option :value="model" x-text="model"></option>
@@ -536,9 +643,20 @@
                         </div>
                         
                         <div>
-                            <button @click="optimizeModelForNPU()" 
+                            <label class="block text-white/70 text-sm font-medium mb-2">Acceleration Type:</label>
+                            <select x-model="selectedAccelerationType" class="w-full px-3 py-2 bg-white/20 text-white rounded border border-white/30">
+                                <option value="auto">Auto (Best Available)</option>
+                                <option value="npu" x-show="npuStatus.npu_available">NPU</option>
+                                <option value="cuda" x-show="gpuStatus.frameworks?.cuda">CUDA (NVIDIA)</option>
+                                <option value="opencl" x-show="gpuStatus.frameworks?.opencl">OpenCL</option>
+                                <option value="directml" x-show="gpuStatus.frameworks?.directml">DirectML</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <button @click="optimizeModelForAcceleration()" 
                                     class="w-full px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors mt-6">
-                                🚀 Optimize for NPU
+                                🚀 Optimize Model
                             </button>
                         </div>
                     </div>
@@ -605,7 +723,15 @@
                 npuStatus: { npu_available: false, device_count: 0, devices: [] },
                 npuPerformance: { utilization: 0 },
                 npuCapabilities: {},
+                
+                // GPU
+                gpuStatus: { gpus_available: false, device_count: 0, devices: [], frameworks: {} },
+                gpuPerformance: { devices: [] },
+                gpuCapabilities: {},
+                
+                // Hardware Acceleration
                 selectedOptimizeModel: '',
+                selectedAccelerationType: 'auto',
                 optimizationResult: null,
                 
                 // Initialize
@@ -614,11 +740,15 @@
                     await this.loadModels();
                     await this.refreshSystemStats();
                     await this.refreshNPUStatus();
+                    await this.refreshGPUStatus();
                     
                     // Auto-refresh health every 30 seconds
                     setInterval(() => this.checkHealth(), 30000);
-                    // Auto-refresh NPU status every 60 seconds
-                    setInterval(() => this.refreshNPUStatus(), 60000);
+                    // Auto-refresh hardware acceleration status every 60 seconds
+                    setInterval(() => {
+                        this.refreshNPUStatus();
+                        this.refreshGPUStatus();
+                    }, 60000);
                 },
                 
                 // Health Check
@@ -923,6 +1053,87 @@
                         
                         if (data.success) {
                             alert(`Model ${this.selectedOptimizeModel} optimized for NPU! Expected speedup: ${data.estimated_speedup}`);
+                        } else {
+                            alert(`Optimization failed: ${data.error}`);
+                        }
+                    } catch (error) {
+                        console.error('Model optimization failed:', error);
+                        alert(`Optimization error: ${error.message}`);
+                    }
+                },
+                
+                // GPU Functions
+                async refreshGPUStatus() {
+                    try {
+                        const response = await fetch('/gpu/status');
+                        const data = await response.json();
+                        this.gpuStatus = data;
+                        this.gpuCapabilities = data.capabilities || {};
+                        
+                        // Get performance metrics if GPU is available
+                        if (data.gpus_available) {
+                            await this.refreshGPUPerformance();
+                        }
+                    } catch (error) {
+                        console.error('Failed to refresh GPU status:', error);
+                        this.gpuStatus = { gpus_available: false, device_count: 0, devices: [], frameworks: {} };
+                    }
+                },
+                
+                async refreshGPUPerformance() {
+                    try {
+                        const response = await fetch('/gpu/performance');
+                        const data = await response.json();
+                        this.gpuPerformance = data;
+                    } catch (error) {
+                        console.error('Failed to refresh GPU performance:', error);
+                        this.gpuPerformance = { devices: [] };
+                    }
+                },
+                
+                async runGPUBenchmark() {
+                    try {
+                        const response = await fetch('/gpu/benchmark', { method: 'POST' });
+                        const data = await response.json();
+                        this.optimizationResult = data;
+                        
+                        if (data.success) {
+                            alert(`GPU benchmark completed! Performance score: ${data.performance_score}`);
+                        } else {
+                            alert(`Benchmark failed: ${data.error}`);
+                        }
+                    } catch (error) {
+                        console.error('GPU benchmark failed:', error);
+                        alert(`Benchmark error: ${error.message}`);
+                    }
+                },
+                
+                async optimizeModelForAcceleration() {
+                    if (!this.selectedOptimizeModel) {
+                        alert('Please select a model to optimize');
+                        return;
+                    }
+                    
+                    try {
+                        let endpoint, params = '';
+                        
+                        if (this.selectedAccelerationType === 'npu' || 
+                           (this.selectedAccelerationType === 'auto' && this.npuStatus.npu_available)) {
+                            endpoint = `/npu/optimize/${this.selectedOptimizeModel}`;
+                        } else {
+                            endpoint = `/gpu/optimize/${this.selectedOptimizeModel}`;
+                            if (this.selectedAccelerationType !== 'auto') {
+                                params = `?gpu_type=${this.selectedAccelerationType}`;
+                            }
+                        }
+                        
+                        const response = await fetch(endpoint + params, { method: 'POST' });
+                        const data = await response.json();
+                        this.optimizationResult = data;
+                        
+                        if (data.success) {
+                            const accelerationType = data.gpu_type || 'NPU';
+                            alert(`Model ${this.selectedOptimizeModel} optimized for ${accelerationType.toUpperCase()}! Expected speedup: ${data.estimated_speedup}`);
                         } else {
                             alert(`Optimization failed: ${data.error}`);
                         }
