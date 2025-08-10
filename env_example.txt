@@ -1,0 +1,116 @@
+# AI Control System - Environment Variables Template
+# Copy this file to .env and customize the values
+
+# ===========================================
+# API Configuration
+# ===========================================
+API_HOST=0.0.0.0
+API_PORT=8001
+DEBUG=false
+ENVIRONMENT=development
+
+# ===========================================
+# Ollama Configuration
+# ===========================================
+OLLAMA_HOST=http://localhost:11434
+OLLAMA_TIMEOUT=300
+DEFAULT_MODEL=gpt-oss:20b
+OLLAMA_NUM_PARALLEL=1
+OLLAMA_NUM_GPU=0
+OLLAMA_MAX_LOADED_MODELS=1
+
+# ===========================================
+# Security Settings
+# ===========================================
+# Enable authentication (recommended for production)
+ENABLE_AUTH=false
+
+# Secret key for JWT tokens (generate a secure random key)
+SECRET_KEY=your-very-secure-secret-key-here-change-this
+
+# Admin password (if authentication is enabled)
+ADMIN_PASSWORD=secure-admin-password
+
+# Rate limiting (requests per minute)
+RATE_LIMIT_PER_MINUTE=20
+
+# ===========================================
+# Feature Toggles
+# ===========================================
+# Enable PC control features
+ENABLE_PC_CONTROL=true
+
+# Enable web browsing automation
+ENABLE_WEB_BROWSING=true
+
+# Maximum command execution timeout (seconds)
+MAX_COMMAND_TIMEOUT=300
+
+# ===========================================
+# Browser Configuration
+# ===========================================
+# Browser type: "playwright" or "selenium"
+BROWSER_TYPE=playwright
+
+# Run browser in headless mode
+BROWSER_HEADLESS=true
+
+# Browser timeout (seconds)
+BROWSER_TIMEOUT=30
+
+# ===========================================
+# File Management
+# ===========================================
+# Upload directory for file operations
+UPLOAD_DIR=uploads
+
+# Maximum file size (bytes) - 100MB default
+MAX_FILE_SIZE=104857600
+
+# Allowed file types (comma-separated)
+ALLOWED_FILE_TYPES=txt,pdf,doc,docx,json,csv,py,js,html,css,md,yml,yaml,xml
+
+# ===========================================
+# Logging Configuration
+# ===========================================
+# Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL
+LOG_LEVEL=INFO
+
+# Log file path (relative to project root)
+LOG_FILE=logs/ai_control.log
+
+# Log rotation size
+LOG_ROTATION=10 MB
+
+# Log retention period
+LOG_RETENTION=30 days
+
+# ===========================================
+# Network Settings
+# ===========================================
+# CORS origins (comma-separated) - use * for development only
+CORS_ORIGINS=*
+
+# Trust proxy headers
+TRUST_PROXY_HEADERS=true
+
+# ===========================================
+# Performance Settings
+# ===========================================
+# Number of worker threads
+WORKER_THREADS=4
+
+# Memory limit in MB
+MEMORY_LIMIT_MB=2048
+
+# ===========================================
+# Development Settings
+# ===========================================
+# Enable hot reload (development only)
+RELOAD=true
+
+# Enable API documentation
+ENABLE_DOCS=true
+
+# Enable debug toolbar
+DEBUG_TOOLBAR=false

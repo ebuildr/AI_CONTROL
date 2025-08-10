@@ -1,0 +1,189 @@
+# AI Control System - Git Ignore File
+
+# ===========================================
+# Python
+# ===========================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# ===========================================
+# Virtual Environment
+# ===========================================
+.venv/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.conda/
+
+# ===========================================
+# Environment Variables
+# ===========================================
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+
+# ===========================================
+# Logs
+# ===========================================
+logs/
+*.log
+*.log.*
+log/
+temp/
+tmp/
+
+# ===========================================
+# AI Models & Data
+# ===========================================
+models/
+*.bin
+*.safetensors
+*.gguf
+*.ggml
+ollama_models/
+
+# ===========================================
+# Uploads & User Data
+# ===========================================
+uploads/
+downloads/
+user_data/
+screenshots/
+temp_files/
+
+# ===========================================
+# Database
+# ===========================================
+*.db
+*.sqlite
+*.sqlite3
+
+# ===========================================
+# IDE & Editor
+# ===========================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ===========================================
+# OS Files
+# ===========================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ===========================================
+# Windows
+# ===========================================
+*.tmp
+*.temp
+Desktop.ini
+$RECYCLE.BIN/
+
+# ===========================================
+# Browser & Testing
+# ===========================================
+.playwright/
+test-results/
+playwright-report/
+node_modules/
+package-lock.json
+yarn.lock
+
+# ===========================================
+# Performance & Profiling
+# ===========================================
+*.prof
+profile/
+.coverage
+htmlcov/
+.pytest_cache/
+
+# ===========================================
+# Security & Secrets
+# ===========================================
+secrets/
+keys/
+certificates/
+*.key
+*.pem
+*.cert
+*.crt
+config/secrets.json
+
+# ===========================================
+# Backup Files
+# ===========================================
+*.bak
+*.backup
+*.old
+*.orig
+
+# ===========================================
+# Project Specific
+# ===========================================
+# Ollama data directory
+.ollama/
+
+# Local configuration overrides
+config_local.py
+settings_local.py
+
+# Test files
+test_output/
+test_data/
+test_images/
+
+# Documentation builds
+docs/_build/
+site/
+
+# Cache directories
+.cache/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+*.ipynb
+
+# ===========================================
+# Dependencies
+# ===========================================
+requirements_local.txt
+poetry.lock
+Pipfile.lock
