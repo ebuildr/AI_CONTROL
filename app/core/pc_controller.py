@@ -13,8 +13,8 @@ from datetime import datetime
 from typing import Dict, List, Optional, Any
 from pathlib import Path
 import psutil
-import winshell
 from loguru import logger
+import shlex
 
 # Windows-specific imports
 if platform.system() == "Windows":
@@ -24,6 +24,7 @@ if platform.system() == "Windows":
         import win32gui
         import win32process
         import wmi
+        import winshell
     except ImportError:
         logger.warning("Windows-specific libraries not available")
 
@@ -272,8 +273,7 @@ class PCController:
                 process = await asyncio.create_subprocess_shell(
                     command,
                     stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE,
-                    shell=True
+                    stderr=asyncio.subprocess.PIPE
                 )
             else:
                 process = await asyncio.create_subprocess_shell(
@@ -354,11 +354,17 @@ class PCController:
             elif command == "start":
                 executable = parameters.get("executable")
                 if executable:
-                    if platform.system() == "Windows":
-                        subprocess.Popen(executable, shell=True)
-                    else:
-                        subprocess.Popen(executable.split())
-                    return {"success": True, "output": f"Started {executable}"}
+                    # Build argument list safely without invoking a shell
+                    args = shlex.split(executable, posix=(platform.system() != "Windows")) if isinstance(executable, str) else executable
+                    if not args:
+                        return {"success": False, "error": "Invalid executable"}
+                    # Ensure the executable exists in PATH
+                    exe_path = shutil.which(args[0])
+                    if exe_path is None:
+                        return {"success": False, "error": f"Executable not found: {args[0]}"}
+                    args[0] = exe_path
+                    subprocess.Popen(args)
+                    return {"success": True, "output": f"Started {' '.join(args)}"}
             
             return {"success": False, "error": f"Unknown process command: {command}"}
             
@@ -380,17 +386,22 @@ class PCController:
                     "explorer": "explorer.exe",
                     "cmd": "cmd.exe",
                     "powershell": "powershell.exe",
-                    "browser": "start chrome",
-                    "chrome": "start chrome",
-                    "firefox": "start firefox"
+                    "browser": "chrome",
+                    "chrome": "chrome",
+                    "firefox": "firefox"
                 }
                 
                 executable = app_mapping.get(app_name.lower(), app_name)
                 
-                if platform.system() == "Windows":
-                    subprocess.Popen(executable, shell=True)
-                else:
-                    subprocess.Popen(executable.split())
+                # Build argument list safely and avoid shell injection
+                args = shlex.split(executable, posix=(platform.system() != "Windows")) if isinstance(executable, str) else executable
+                if not args:
+                    return {"success": False, "error": "Invalid application"}
+                exe_path = shutil.which(args[0])
+                if exe_path is None:
+                    return {"success": False, "error": f"Application not found: {args[0]}"}
+                args[0] = exe_path
+                subprocess.Popen(args)
                 
                 return {"success": True, "output": f"Opened {app_name}"}
             
