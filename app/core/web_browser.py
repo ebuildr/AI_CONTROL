@@ -76,19 +76,28 @@ class WebBrowserController:
     
     async def _init_playwright(self):
         """Initialize Playwright browser"""
-        self.playwright = await async_playwright().start()
-        
-        # Launch browser (headless by default)
-        self.browser = await self.playwright.chromium.launch(
-            headless=True,
-            args=[
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage',
-                '--disable-web-security',
-                '--disable-features=VizDisplayCompositor'
-            ]
-        )
+        try:
+            self.playwright = await async_playwright().start()
+            
+            # Launch browser (headless by default) with additional Windows-specific args
+            self.browser = await self.playwright.chromium.launch(
+                headless=True,
+                args=[
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-dev-shm-usage',
+                    '--disable-web-security',
+                    '--disable-features=VizDisplayCompositor',
+                    '--disable-gpu',
+                    '--disable-dev-tools',
+                    '--no-zygote',
+                    '--single-process'
+                ]
+            )
+        except Exception as e:
+            logger.warning(f"Playwright chromium launch failed: {e}")
+            # Try with different browser or fail gracefully
+            raise
         
         # Create context
         self.context = await self.browser.new_context(

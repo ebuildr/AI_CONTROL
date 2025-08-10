@@ -68,7 +68,25 @@ class AIManager:
                 return
                 
             models_response = await self.ollama_client.list()
-            self.available_models = [model['name'] for model in models_response.get('models', [])]
+            
+            # Handle different response structures
+            if hasattr(models_response, 'models'):
+                models_list = models_response.models
+            elif isinstance(models_response, dict) and 'models' in models_response:
+                models_list = models_response['models']
+            else:
+                logger.warning(f"Unexpected models response structure: {type(models_response)}")
+                models_list = []
+            
+            # Extract model names safely
+            self.available_models = []
+            for model in models_list:
+                if isinstance(model, dict) and 'name' in model:
+                    self.available_models.append(model['name'])
+                elif hasattr(model, 'name'):
+                    self.available_models.append(model.name)
+                else:
+                    logger.warning(f"Unexpected model structure: {model}")
             
             logger.info(f"📋 Found {len(self.available_models)} models: {self.available_models}")
             

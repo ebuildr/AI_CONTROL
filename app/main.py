@@ -30,6 +30,7 @@ from app.models.requests import ChatRequest, PCCommandRequest, WebBrowseRequest
 from app.models.responses import ChatResponse, PCCommandResponse, WebBrowseResponse
 from app.utils.config import get_settings
 from app.utils.logger import setup_logging
+from app.utils.monitoring import system_monitor, monitor_endpoint, log_error_context
 
 # Initialize logging
 setup_logging()
@@ -323,6 +324,30 @@ async def take_screenshot():
         return {"screenshot": screenshot, "timestamp": datetime.now().isoformat()}
     except Exception as e:
         logger.error(f"Error taking screenshot: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Diagnostics endpoints
+@app.get("/diagnostics")
+@monitor_endpoint("diagnostics")
+async def get_diagnostics():
+    """Get comprehensive system diagnostics"""
+    try:
+        diagnostics = system_monitor.export_diagnostics()
+        return diagnostics
+    except Exception as e:
+        log_error_context(e, "Diagnostics export failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/diagnostics/errors")
+@monitor_endpoint("diagnostics_errors")
+async def get_error_history(hours: int = 24):
+    """Get error history for the last N hours"""
+    try:
+        return system_monitor.get_error_summary(hours)
+    except Exception as e:
+        log_error_context(e, "Error history retrieval failed")
         raise HTTPException(status_code=500, detail=str(e))
 
 

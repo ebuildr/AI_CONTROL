@@ -33,7 +33,15 @@ class SecurityManager:
             r"taskkill\s+/f",
             r"wmic\s+.*delete",
             r"powershell.*remove-item.*-force.*-recurse",
-            r"cmd.*rd\s+/s\s+/q"
+            r"cmd.*rd\s+/s\s+/q",
+            r"cipher\s+/w",
+            r"sdelete",
+            r"bcdedit",
+            r"diskpart\s+(?!list)",
+            r"attrib\s+.*\+s\s+.*\+h",
+            r"icacls.*deny",
+            r"takeown",
+            r"cacls.*deny"
         ]
         
         # Safe command whitelist
@@ -91,6 +99,11 @@ class SecurityManager:
                 if any(action in command_lower for action in ["delete", "remove", "rm", "del"]):
                     logger.warning(f"🚨 Blocked system directory operation: {command}")
                     return False
+            
+            # Check for path traversal attempts
+            if self._has_path_traversal(command):
+                logger.warning(f"🚨 Blocked path traversal attempt: {command}")
+                return False
             
             # Rate limiting check
             if not self._check_rate_limit():
@@ -261,3 +274,19 @@ class SecurityManager:
         except Exception as e:
             logger.error(f"File safety check failed: {e}")
             return False
+    
+    def _has_path_traversal(self, command: str) -> bool:
+        """Check for path traversal patterns"""
+        traversal_patterns = [
+            r"\.\.[\\/]",
+            r"[\\/]\.\.[\\/]",
+            r"\.\.[\\/]\.\.[\\/]",
+            r"%2e%2e[\\/]",
+            r"\.\.%2f",
+            r"\.\.%5c"
+        ]
+        
+        for pattern in traversal_patterns:
+            if re.search(pattern, command, re.IGNORECASE):
+                return True
+        return False
