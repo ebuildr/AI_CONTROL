@@ -7,8 +7,12 @@ import time
 import json
 from typing import Dict, List, Optional, AsyncGenerator
 import httpx
-import ollama
 from loguru import logger
+
+try:
+    import ollama
+except Exception:  # allow running without ollama installed
+    ollama = None
 
 
 class AIManager:
@@ -30,8 +34,14 @@ class AIManager:
     async def initialize(self):
         """Initialize AI manager and check models"""
         try:
-            # Initialize Ollama client
-            self.ollama_client = ollama.AsyncClient(host=self.ollama_host)
+            # Initialize Ollama client if available
+            if ollama is not None:
+                self.ollama_client = ollama.AsyncClient(host=self.ollama_host)
+            else:
+                logger.warning("Ollama client not available; using default models only")
+                self.available_models = self.default_models
+                self.ollama_client = None
+                return
             
             # Check available models
             await self.refresh_models()
@@ -39,8 +49,10 @@ class AIManager:
             logger.info(f"✅ AI Manager initialized with {len(self.available_models)} models")
             
         except Exception as e:
-            logger.error(f"❌ Failed to initialize AI Manager: {e}")
-            raise
+            logger.warning(f"⚠️ Could not fully initialize AI Manager: {e}; using default models")
+            self.available_models = self.default_models
+            self.ollama_client = None
+            return
     
     async def cleanup(self):
         """Cleanup resources"""
@@ -181,7 +193,7 @@ class AIManager:
             messages.append({"role": "user", "content": prompt})
             
             # Stream the response
-            async for chunk in await self.ollama_client.chat(
+            async for chunk in self.ollama_client.chat(
                 model=model,
                 messages=messages,
                 options={"temperature": temperature},
