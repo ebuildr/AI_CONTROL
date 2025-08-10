@@ -26,6 +26,7 @@ from app.core.ai_manager import AIManager
 from app.core.pc_controller import PCController
 from app.core.web_browser import WebBrowserController
 from app.core.security import SecurityManager
+from app.core.npu_manager import NPUManager
 from app.models.requests import ChatRequest, PCCommandRequest, WebBrowseRequest
 from app.models.responses import ChatResponse, PCCommandResponse, WebBrowseResponse
 from app.utils.config import get_settings
@@ -61,6 +62,7 @@ ai_manager = AIManager()
 pc_controller = PCController()
 web_browser = WebBrowserController()
 security_manager = SecurityManager()
+npu_manager = NPUManager()
 
 # Mount static files
 static_path = Path(__file__).parent / "static"
@@ -73,7 +75,10 @@ async def startup_event():
     """Initialize components on startup"""
     logger.info("🚀 Starting AI Control System...")
     
-    # Initialize AI models
+    # Initialize NPU manager first (for hardware detection)
+    await npu_manager.initialize()
+    
+    # Initialize AI models (with NPU acceleration if available)
     await ai_manager.initialize()
     
     # Initialize PC controller
@@ -90,6 +95,7 @@ async def shutdown_event():
     """Cleanup on shutdown"""
     logger.info("🛑 Shutting down AI Control System...")
     
+    await npu_manager.cleanup()
     await ai_manager.cleanup()
     await pc_controller.cleanup()
     await web_browser.cleanup()
@@ -348,6 +354,55 @@ async def get_error_history(hours: int = 24):
         return system_monitor.get_error_summary(hours)
     except Exception as e:
         log_error_context(e, "Error history retrieval failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# NPU Management Endpoints
+@app.get("/npu/status")
+@monitor_endpoint("npu_status")
+async def get_npu_status():
+    """Get NPU hardware status and capabilities"""
+    try:
+        status = await npu_manager.get_npu_status()
+        return status
+    except Exception as e:
+        log_error_context(e, "NPU status retrieval failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/npu/performance")
+@monitor_endpoint("npu_performance")
+async def get_npu_performance():
+    """Get NPU performance metrics"""
+    try:
+        metrics = await npu_manager.get_npu_performance_metrics()
+        return metrics
+    except Exception as e:
+        log_error_context(e, "NPU performance metrics failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/npu/benchmark")
+@monitor_endpoint("npu_benchmark")
+async def run_npu_benchmark():
+    """Run NPU benchmark tests"""
+    try:
+        results = await npu_manager.benchmark_npu()
+        return results
+    except Exception as e:
+        log_error_context(e, "NPU benchmark failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/npu/optimize/{model_name}")
+@monitor_endpoint("npu_optimize_model")
+async def optimize_model_for_npu(model_name: str):
+    """Optimize a specific model for NPU inference"""
+    try:
+        result = await npu_manager.optimize_model_for_npu(model_name)
+        return result
+    except Exception as e:
+        log_error_context(e, f"NPU model optimization failed for {model_name}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

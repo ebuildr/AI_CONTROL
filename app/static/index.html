@@ -102,6 +102,11 @@
                         class="px-6 py-3 transition-colors">
                     📊 System Status
                 </button>
+                <button @click="activeTab = 'npu'" 
+                        :class="activeTab === 'npu' ? 'bg-white/20' : 'bg-transparent hover:bg-white/10'"
+                        class="px-6 py-3 transition-colors">
+                    🧠 NPU Control
+                </button>
             </div>
         </div>
     </nav>
@@ -433,6 +438,118 @@
                 </div>
             </div>
         </div>
+
+        <!-- NPU Control Tab -->
+        <div class="tab-content" :class="activeTab === 'npu' ? 'active' : ''">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- NPU Status -->
+                <div class="glass-effect rounded-lg p-6">
+                    <h2 class="text-2xl font-bold text-white mb-4">🧠 NPU Status</h2>
+                    
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center">
+                            <span class="text-white">NPU Available:</span>
+                            <div class="flex items-center space-x-2">
+                                <div class="w-3 h-3 rounded-full" :class="npuStatus.npu_available ? 'bg-green-400' : 'bg-red-400'"></div>
+                                <span class="text-white text-sm" x-text="npuStatus.npu_available ? 'Yes' : 'No'"></span>
+                            </div>
+                        </div>
+                        
+                        <div class="flex justify-between items-center">
+                            <span class="text-white">Device Count:</span>
+                            <span class="text-white text-sm" x-text="npuStatus.device_count || 0"></span>
+                        </div>
+                        
+                        <div class="pt-4 border-t border-white/20" x-show="npuStatus.npu_available">
+                            <h3 class="text-white font-semibold mb-2">NPU Devices:</h3>
+                            <template x-for="device in npuStatus.devices" :key="device.name">
+                                <div class="bg-white/10 rounded p-3 mb-2">
+                                    <div class="text-white font-medium" x-text="device.name"></div>
+                                    <div class="text-white/70 text-sm">
+                                        <span x-text="device.vendor"></span> | 
+                                        <span x-text="device.type"></span> |
+                                        <span x-text="device.status"></span>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                    
+                    <button @click="refreshNPUStatus()" 
+                            class="w-full mt-4 px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 transition-colors">
+                        🔄 Refresh NPU Status
+                    </button>
+                </div>
+
+                <!-- NPU Performance -->
+                <div class="glass-effect rounded-lg p-6">
+                    <h2 class="text-2xl font-bold text-white mb-4">⚡ NPU Performance</h2>
+                    
+                    <div class="space-y-4" x-show="npuStatus.npu_available">
+                        <div class="flex justify-between items-center">
+                            <span class="text-white">Utilization:</span>
+                            <div class="flex items-center space-x-2">
+                                <div class="w-32 bg-white/20 rounded-full h-2">
+                                    <div class="bg-purple-500 h-2 rounded-full" :style="`width: ${npuPerformance.utilization || 0}%`"></div>
+                                </div>
+                                <span class="text-white text-sm" x-text="(npuPerformance.utilization || 0).toFixed(1) + '%'"></span>
+                            </div>
+                        </div>
+                        
+                        <div x-show="npuCapabilities && Object.keys(npuCapabilities).length > 0">
+                            <h3 class="text-white font-semibold mb-2">NPU Capabilities:</h3>
+                            <template x-for="[deviceName, caps] in Object.entries(npuCapabilities)" :key="deviceName">
+                                <div class="bg-white/10 rounded p-3 mb-2">
+                                    <div class="text-white/70 text-sm">
+                                        <div><strong>TOPS:</strong> <span x-text="caps.tops"></span></div>
+                                        <div><strong>Formats:</strong> <span x-text="caps.supported_formats?.join(', ')"></span></div>
+                                        <div><strong>Frameworks:</strong> <span x-text="caps.frameworks?.join(', ')"></span></div>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                    
+                    <div x-show="!npuStatus.npu_available" class="text-center text-white/70">
+                        No NPU detected. Consider upgrading to a processor with integrated NPU for AI acceleration.
+                    </div>
+                    
+                    <button @click="runNPUBenchmark()" 
+                            x-show="npuStatus.npu_available"
+                            class="w-full mt-4 px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600 transition-colors">
+                        🏃 Run NPU Benchmark
+                    </button>
+                </div>
+
+                <!-- NPU Model Optimization -->
+                <div class="glass-effect rounded-lg p-6 lg:col-span-2" x-show="npuStatus.npu_available">
+                    <h2 class="text-2xl font-bold text-white mb-4">🔧 Model Optimization</h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-white/70 text-sm font-medium mb-2">Select Model to Optimize:</label>
+                            <select x-model="selectedOptimizeModel" class="w-full px-3 py-2 bg-white/20 text-white rounded border border-white/30">
+                                <template x-for="model in availableModels" :key="model">
+                                    <option :value="model" x-text="model"></option>
+                                </template>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <button @click="optimizeModelForNPU()" 
+                                    class="w-full px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors mt-6">
+                                🚀 Optimize for NPU
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div x-show="optimizationResult" class="mt-4 p-4 bg-white/10 rounded">
+                        <h3 class="text-white font-semibold mb-2">Optimization Result:</h3>
+                        <pre class="text-white/80 text-sm overflow-x-auto" x-text="JSON.stringify(optimizationResult, null, 2)"></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
     </main>
 
     <!-- Footer -->
@@ -484,14 +601,24 @@
                 systemStats: {},
                 processes: [],
                 
+                // NPU
+                npuStatus: { npu_available: false, device_count: 0, devices: [] },
+                npuPerformance: { utilization: 0 },
+                npuCapabilities: {},
+                selectedOptimizeModel: '',
+                optimizationResult: null,
+                
                 // Initialize
                 async init() {
                     await this.checkHealth();
                     await this.loadModels();
                     await this.refreshSystemStats();
+                    await this.refreshNPUStatus();
                     
                     // Auto-refresh health every 30 seconds
                     setInterval(() => this.checkHealth(), 30000);
+                    // Auto-refresh NPU status every 60 seconds
+                    setInterval(() => this.refreshNPUStatus(), 60000);
                 },
                 
                 // Health Check
@@ -726,6 +853,82 @@
                         this.processes = data.processes || [];
                     } catch (error) {
                         console.error('Failed to refresh processes:', error);
+                    }
+                },
+                
+                // NPU Functions
+                async refreshNPUStatus() {
+                    try {
+                        const response = await fetch('/npu/status');
+                        const data = await response.json();
+                        this.npuStatus = data;
+                        this.npuCapabilities = data.capabilities || {};
+                        
+                        // Set default selected model for optimization
+                        if (!this.selectedOptimizeModel && this.availableModels.length > 0) {
+                            this.selectedOptimizeModel = this.availableModels[0];
+                        }
+                        
+                        // Also get performance metrics if NPU is available
+                        if (data.npu_available) {
+                            await this.refreshNPUPerformance();
+                        }
+                    } catch (error) {
+                        console.error('Failed to refresh NPU status:', error);
+                        this.npuStatus = { npu_available: false, device_count: 0, devices: [] };
+                    }
+                },
+                
+                async refreshNPUPerformance() {
+                    try {
+                        const response = await fetch('/npu/performance');
+                        const data = await response.json();
+                        this.npuPerformance = data;
+                    } catch (error) {
+                        console.error('Failed to refresh NPU performance:', error);
+                        this.npuPerformance = { utilization: 0 };
+                    }
+                },
+                
+                async runNPUBenchmark() {
+                    try {
+                        this.npuOutput = 'Running NPU benchmark...';
+                        const response = await fetch('/npu/benchmark', { method: 'POST' });
+                        const data = await response.json();
+                        this.optimizationResult = data;
+                        
+                        if (data.success) {
+                            this.npuOutput = `Benchmark completed! Execution time: ${data.execution_time.toFixed(3)}s, TOPS: ${data.tops_achieved}`;
+                        } else {
+                            this.npuOutput = `Benchmark failed: ${data.error}`;
+                        }
+                    } catch (error) {
+                        console.error('NPU benchmark failed:', error);
+                        this.npuOutput = `Benchmark error: ${error.message}`;
+                    }
+                },
+                
+                async optimizeModelForNPU() {
+                    if (!this.selectedOptimizeModel) {
+                        alert('Please select a model to optimize');
+                        return;
+                    }
+                    
+                    try {
+                        const response = await fetch(`/npu/optimize/${this.selectedOptimizeModel}`, { 
+                            method: 'POST' 
+                        });
+                        const data = await response.json();
+                        this.optimizationResult = data;
+                        
+                        if (data.success) {
+                            alert(`Model ${this.selectedOptimizeModel} optimized for NPU! Expected speedup: ${data.estimated_speedup}`);
+                        } else {
+                            alert(`Optimization failed: ${data.error}`);
+                        }
+                    } catch (error) {
+                        console.error('Model optimization failed:', error);
+                        alert(`Optimization error: ${error.message}`);
                     }
                 }
             }
