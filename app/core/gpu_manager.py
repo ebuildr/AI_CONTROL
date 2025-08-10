@@ -166,44 +166,61 @@ class GPUManager:
         """Detect GPUs via Windows WMI"""
         gpus = []
         try:
-            cmd = [
-                "powershell", "-Command",
-                f"Get-WmiObject -Class Win32_VideoController | Where-Object {{$_.Name -like '*{vendor_filter}*'}} | ConvertTo-Json"
+            # Try multiple methods to detect GPUs (WMIC is deprecated, use PowerShell)
+            commands = [
+                ["powershell", "-Command", f"Get-WmiObject -Class Win32_VideoController | Where-Object {{$_.Name -like '*{vendor_filter}*'}} | Select-Object Name, AdapterRAM, DriverVersion | ConvertTo-Json"],
+                ["powershell", "-Command", f"Get-WmiObject -Class Win32_VideoController | ConvertTo-Json"]
             ]
             
-            result = await asyncio.create_subprocess_exec(
-                *cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
-            )
-            
-            stdout, stderr = await result.communicate()
-            
-            if result.returncode == 0 and stdout:
-                devices = json.loads(stdout.decode())
-                if isinstance(devices, dict):
-                    devices = [devices]
-                
-                for device in devices:
-                    # Skip basic display adapters
-                    name = device.get('Name', '')
-                    if any(skip in name.lower() for skip in ['basic', 'standard', 'vga']):
-                        continue
-                        
-                    gpu_info = {
-                        "type": f"{vendor_filter} GPU",
-                        "name": name,
-                        "vendor": vendor_filter,
-                        "device_id": device.get('DeviceID', ''),
-                        "driver_version": device.get('DriverVersion', 'Unknown'),
-                        "memory_total": device.get('AdapterRAM', 0),
-                        "status": device.get('Status', 'Unknown')
-                    }
+            for cmd in commands:
+                try:
+                    result = await asyncio.create_subprocess_exec(
+                        *cmd,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE
+                    )
                     
-                    gpus.append(gpu_info)
+                    stdout, stderr = await result.communicate()
+                    
+                    if result.returncode == 0 and stdout:
+                        output = stdout.decode().strip()
+                        
+                        # Handle JSON output from PowerShell
+                        if output.startswith('{') or output.startswith('['):
+                            try:
+                                devices = json.loads(output)
+                                if isinstance(devices, dict):
+                                    devices = [devices]
+                                
+                                for device in devices:
+                                    name = device.get('Name', '')
+                                    if name and vendor_filter.lower() in name.lower():
+                                        # Skip basic display adapters
+                                        if any(skip in name.lower() for skip in ['basic', 'standard', 'vga']):
+                                            continue
+                                            
+                                        gpu_info = {
+                                            "type": f"{vendor_filter} GPU",
+                                            "name": name,
+                                            "vendor": vendor_filter,
+                                            "device_id": device.get('DeviceID', ''),
+                                            "driver_version": device.get('DriverVersion', 'Unknown'),
+                                            "memory_total": device.get('AdapterRAM', 0),
+                                            "status": device.get('Status', 'Available')
+                                        }
+                                        gpus.append(gpu_info)
+                            except json.JSONDecodeError:
+                                continue
+                        
+                        if gpus:  # If we found GPUs, break out of command loop
+                            break
+                            
+                except Exception as e:
+                    logger.debug(f"Command {cmd[0]} failed for {vendor_filter}: {e}")
+                    continue
                     
         except Exception as e:
-            logger.debug(f"{vendor_filter} WMI GPU detection error: {e}")
+            logger.debug(f"{vendor_filter} GPU detection error: {e}")
         
         return gpus
     
