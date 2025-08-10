@@ -11,15 +11,28 @@ from datetime import datetime
 from typing import Dict, List, Optional, Any
 from pathlib import Path
 
-from playwright.async_api import async_playwright, Browser, Page, BrowserContext
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.chrome.options import Options as ChromeOptions
-import requests
-from bs4 import BeautifulSoup
+# Optional heavy dependencies
+try:
+    from playwright.async_api import async_playwright, Browser, Page, BrowserContext  # type: ignore
+except Exception:  # pragma: no cover
+    async_playwright = None  # type: ignore
+    Browser = Page = BrowserContext = None  # type: ignore
+try:
+    from selenium import webdriver  # type: ignore
+    from selenium.webdriver.common.by import By  # type: ignore
+    from selenium.webdriver.common.keys import Keys  # type: ignore
+    from selenium.webdriver.support.ui import WebDriverWait  # type: ignore
+    from selenium.webdriver.support import expected_conditions as EC  # type: ignore
+    from selenium.webdriver.chrome.options import Options as ChromeOptions  # type: ignore
+except Exception:  # pragma: no cover
+    webdriver = None  # type: ignore
+    By = Keys = WebDriverWait = EC = ChromeOptions = None  # type: ignore
+try:
+    import requests  # type: ignore
+    from bs4 import BeautifulSoup  # type: ignore
+except Exception:  # pragma: no cover
+    requests = None  # type: ignore
+    BeautifulSoup = None  # type: ignore
 from loguru import logger
 
 
@@ -76,10 +89,12 @@ class WebBrowserController:
     
     async def _init_playwright(self):
         """Initialize Playwright browser"""
-        self.playwright = await async_playwright().start()
+        if async_playwright is None:
+            raise RuntimeError("playwright is not installed")
+        self.playwright = await async_playwright().start()  # type: ignore
         
         # Launch browser (headless by default)
-        self.browser = await self.playwright.chromium.launch(
+        self.browser = await self.playwright.chromium.launch(  # type: ignore
             headless=True,
             args=[
                 '--no-sandbox',
@@ -91,16 +106,18 @@ class WebBrowserController:
         )
         
         # Create context
-        self.context = await self.browser.new_context(
+        self.context = await self.browser.new_context(  # type: ignore
             viewport={'width': 1920, 'height': 1080},
             user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         )
         
         # Create page
-        self.page = await self.context.new_page()
+        self.page = await self.context.new_page()  # type: ignore
     
     async def _init_selenium(self):
         """Initialize Selenium browser"""
+        if webdriver is None or ChromeOptions is None:
+            raise RuntimeError("selenium or Chrome options are not installed")
         chrome_options = ChromeOptions()
         chrome_options.add_argument('--headless')
         chrome_options.add_argument('--no-sandbox')
