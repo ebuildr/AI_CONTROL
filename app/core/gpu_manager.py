@@ -12,6 +12,7 @@ from pathlib import Path
 
 import psutil
 from loguru import logger
+from app.core.hardware_detector import HardwareDetector
 
 try:
     import nvidia_ml_py3 as nvml
@@ -55,32 +56,73 @@ class GPUManager:
     async def _detect_gpu_hardware(self):
         """Detect available GPU hardware"""
         try:
-            # Detect NVIDIA GPUs
-            nvidia_gpus = await self._detect_nvidia_gpus()
-            if nvidia_gpus:
-                self.gpu_devices.extend(nvidia_gpus)
-                self.gpus_available = True
+            # Use the unified hardware detector
+            hardware_info = HardwareDetector.detect_all_hardware()
             
-            # Detect AMD GPUs
-            amd_gpus = await self._detect_amd_gpus()
-            if amd_gpus:
-                self.gpu_devices.extend(amd_gpus)
+            if hardware_info["gpu"]["available"]:
+                # Convert hardware detector format to GPU manager format
+                for device in hardware_info["gpu"]["devices"]:
+                    gpu_device = {
+                        "type": f"{device['vendor']} GPU",
+                        "name": device["name"],
+                        "vendor": device["vendor"],
+                        "device_id": len(self.gpu_devices),
+                        "memory_total": int(device.get("memory_gb", 0) * 1024 * 1024 * 1024),  # Convert GB to bytes
+                        "memory_free": 0,  # Will be updated in performance monitoring
+                        "memory_used": 0,  # Will be updated in performance monitoring
+                        "compute_capability": "Unknown",
+                        "status": "Available",
+                        "driver_version": device.get("driver_version", "Unknown"),
+                        "gpu_type": device.get("type", "discrete")
+                    }
+                    self.gpu_devices.append(gpu_device)
+                    
+                    # Set framework availability based on vendor
+                    if device["vendor"] == "NVIDIA":
+                        self.cuda_available = True
+                
                 self.gpus_available = True
-            
-            # Detect Intel GPUs
-            intel_gpus = await self._detect_intel_gpus()
-            if intel_gpus:
-                self.gpu_devices.extend(intel_gpus)
-                self.gpus_available = True
-            
-            # Get GPU capabilities
-            if self.gpus_available:
+                
+                # Get GPU capabilities
                 await self._get_gpu_capabilities()
+                
+                # Try NVML for more detailed NVIDIA info
+                if self.cuda_available and NVML_AVAILABLE:
+                    await self._enhance_nvidia_info()
+            else:
+                self.gpu_devices = []
+                self.gpus_available = False
             
             logger.info(f"📊 Found {len(self.gpu_devices)} GPU device(s)")
             
         except Exception as e:
             logger.error(f"GPU detection failed: {e}")
+    
+    async def _enhance_nvidia_info(self):
+        """Enhance NVIDIA GPU info using NVML"""
+        try:
+            nvml.nvmlInit()
+            device_count = nvml.nvmlDeviceGetCount()
+            
+            for i in range(min(device_count, len(self.gpu_devices))):
+                if self.gpu_devices[i]["vendor"] == "NVIDIA":
+                    handle = nvml.nvmlDeviceGetHandleByIndex(i)
+                    
+                    # Update memory info
+                    memory_info = nvml.nvmlDeviceGetMemoryInfo(handle)
+                    self.gpu_devices[i]["memory_total"] = memory_info.total
+                    self.gpu_devices[i]["memory_free"] = memory_info.free
+                    self.gpu_devices[i]["memory_used"] = memory_info.used
+                    
+                    # Get compute capability
+                    try:
+                        major, minor = nvml.nvmlDeviceGetCudaComputeCapability(handle)
+                        self.gpu_devices[i]["compute_capability"] = f"{major}.{minor}"
+                    except:
+                        pass
+                        
+        except Exception as e:
+            logger.debug(f"NVML enhancement failed: {e}")
     
     async def _detect_nvidia_gpus(self) -> List[Dict]:
         """Detect NVIDIA GPUs using nvidia-ml-py3"""

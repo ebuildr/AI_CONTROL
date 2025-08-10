@@ -13,6 +13,7 @@ from pathlib import Path
 
 import psutil
 from loguru import logger
+from app.core.hardware_detector import HardwareDetector
 
 
 class NPUManager:
@@ -47,27 +48,33 @@ class NPUManager:
     async def _detect_npu_hardware(self):
         """Detect available NPU hardware"""
         try:
-            # Check for Intel AI Boost (NPU)
-            intel_npu = await self._detect_intel_npu()
-            if intel_npu:
-                self.npu_devices.append(intel_npu)
-                self.npu_available = True
+            # Use the unified hardware detector
+            hardware_info = HardwareDetector.detect_all_hardware()
             
-            # Check for AMD NPU
-            amd_npu = await self._detect_amd_npu()
-            if amd_npu:
-                self.npu_devices.append(amd_npu)
+            if hardware_info["npu"]["available"]:
+                # Convert hardware detector format to NPU manager format
+                for device in hardware_info["npu"]["devices"]:
+                    npu_device = {
+                        "type": f"{device['vendor']} NPU ({device['type']})",
+                        "name": device["name"],
+                        "device_id": device.get("device_id", "integrated"),
+                        "vendor": device["vendor"],
+                        "status": "Available"
+                    }
+                    self.npu_devices.append(npu_device)
+                
                 self.npu_available = True
-            
-            # Check for other NPU devices
-            other_npus = await self._detect_other_npus()
-            if other_npus:
-                self.npu_devices.extend(other_npus)
-                self.npu_available = True
-            
-            # Get NPU capabilities
-            if self.npu_available:
+                
+                # Update processor info
+                processor = hardware_info["processor"]
+                if processor["name"] != "Unknown":
+                    logger.info(f"🔍 Processor detected: {processor['name']}")
+                
+                # Get NPU capabilities
                 await self._get_npu_capabilities()
+            else:
+                self.npu_devices = []
+                self.npu_available = False
             
             logger.info(f"📊 Found {len(self.npu_devices)} NPU device(s)")
             

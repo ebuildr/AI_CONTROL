@@ -363,7 +363,6 @@ async def get_error_history(hours: int = 24):
 
 # NPU Management Endpoints
 @app.get("/npu/status")
-@monitor_endpoint("npu_status")
 async def get_npu_status():
     """Get NPU hardware status and capabilities"""
     try:
@@ -375,7 +374,6 @@ async def get_npu_status():
 
 
 @app.get("/npu/performance")
-@monitor_endpoint("npu_performance")
 async def get_npu_performance():
     """Get NPU performance metrics"""
     try:
@@ -387,7 +385,6 @@ async def get_npu_performance():
 
 
 @app.post("/npu/benchmark")
-@monitor_endpoint("npu_benchmark")
 async def run_npu_benchmark():
     """Run NPU benchmark tests"""
     try:
@@ -399,7 +396,6 @@ async def run_npu_benchmark():
 
 
 @app.post("/npu/optimize/{model_name}")
-@monitor_endpoint("npu_optimize_model")
 async def optimize_model_for_npu(model_name: str):
     """Optimize a specific model for NPU inference"""
     try:
@@ -412,7 +408,6 @@ async def optimize_model_for_npu(model_name: str):
 
 # GPU Management Endpoints
 @app.get("/gpu/status")
-@monitor_endpoint("gpu_status")
 async def get_gpu_status():
     """Get GPU hardware status and capabilities"""
     try:
@@ -424,7 +419,6 @@ async def get_gpu_status():
 
 
 @app.get("/gpu/performance")
-@monitor_endpoint("gpu_performance")
 async def get_gpu_performance():
     """Get GPU performance metrics"""
     try:
@@ -436,7 +430,6 @@ async def get_gpu_performance():
 
 
 @app.post("/gpu/benchmark")
-@monitor_endpoint("gpu_benchmark")
 async def run_gpu_benchmark():
     """Run GPU benchmark tests"""
     try:
@@ -448,7 +441,6 @@ async def run_gpu_benchmark():
 
 
 @app.post("/gpu/optimize/{model_name}")
-@monitor_endpoint("gpu_optimize_model")
 async def optimize_model_for_gpu(model_name: str, gpu_type: str = "auto"):
     """Optimize a specific model for GPU inference"""
     try:
