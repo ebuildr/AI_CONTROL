@@ -180,8 +180,8 @@ class AIManager:
                 messages.append({"role": "system", "content": system_prompt})
             messages.append({"role": "user", "content": prompt})
             
-            # Stream the response
-            async for chunk in await self.ollama_client.chat(
+            # Stream the response (do not await the async generator)
+            async for chunk in self.ollama_client.chat(
                 model=model,
                 messages=messages,
                 options={"temperature": temperature},
