@@ -8,6 +8,7 @@ import os
 import sys
 import json
 import logging
+import platform
 from datetime import datetime
 from typing import Dict, List, Optional, Union
 from pathlib import Path
@@ -17,8 +18,6 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-import httpx
-import ollama
 from loguru import logger
 
 # Import our custom modules
@@ -78,8 +77,11 @@ async def startup_event():
     # Initialize PC controller
     await pc_controller.initialize()
     
-    # Initialize web browser
-    await web_browser.initialize()
+    # Initialize web browser (tolerate failures in headless environments)
+    try:
+        await web_browser.initialize()
+    except Exception as e:
+        logger.warning(f"Web browser initialization skipped: {e}")
     
     logger.info("✅ AI Control System ready!")
 
@@ -294,9 +296,11 @@ async def get_running_processes():
 
 
 @app.get("/pc/files")
-async def list_files(path: str = "C:\\"):
+async def list_files(path: str = ""):
     """List files in directory"""
     try:
+        if not path:
+            path = "C:\\" if platform.system() == "Windows" else "/"
         files = await pc_controller.list_files(path)
         return {"path": path, "files": files}
     except Exception as e:

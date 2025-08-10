@@ -11,16 +11,14 @@ from datetime import datetime
 from typing import Dict, List, Optional, Any
 from pathlib import Path
 
-from playwright.async_api import async_playwright, Browser, Page, BrowserContext
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.chrome.options import Options as ChromeOptions
-import requests
-from bs4 import BeautifulSoup
 from loguru import logger
+
+# Optional imports are resolved lazily at runtime
+try:
+    from playwright.async_api import async_playwright, Browser, Page, BrowserContext  # type: ignore
+except Exception:  # ImportError or others
+    async_playwright = None  # type: ignore
+    Browser = Page = BrowserContext = None  # type: ignore
 
 
 class WebBrowserController:
@@ -76,6 +74,8 @@ class WebBrowserController:
     
     async def _init_playwright(self):
         """Initialize Playwright browser"""
+        if async_playwright is None:
+            raise RuntimeError("playwright is not installed")
         self.playwright = await async_playwright().start()
         
         # Launch browser (headless by default)
@@ -101,6 +101,12 @@ class WebBrowserController:
     
     async def _init_selenium(self):
         """Initialize Selenium browser"""
+        try:
+            from selenium import webdriver  # type: ignore
+            from selenium.webdriver.chrome.options import Options as ChromeOptions  # type: ignore
+        except Exception as e:
+            raise RuntimeError(f"selenium is not installed: {e}")
+        
         chrome_options = ChromeOptions()
         chrome_options.add_argument('--headless')
         chrome_options.add_argument('--no-sandbox')
@@ -274,8 +280,7 @@ class WebBrowserController:
     ) -> Dict:
         """Execute action using Selenium"""
         try:
-            if not self.selenium_driver:
-                raise Exception("Selenium driver not initialized")
+            from selenium.webdriver.common.by import By  # type: ignore
             
             result = {"success": True, "data": None}
             
@@ -291,9 +296,7 @@ class WebBrowserController:
             
             elif action == "get_text":
                 if selector:
-                    element = WebDriverWait(self.selenium_driver, 10).until(
-                        EC.presence_of_element_located((By.CSS_SELECTOR, selector))
-                    )
+                    element = self.selenium_driver.find_element(By.CSS_SELECTOR, selector)
                     text_content = element.text
                 else:
                     text_content = self.selenium_driver.find_element(By.TAG_NAME, "body").text
@@ -302,20 +305,15 @@ class WebBrowserController:
             elif action == "click":
                 if not selector:
                     raise ValueError("Selector required for click action")
-                element = WebDriverWait(self.selenium_driver, 10).until(
-                    EC.element_to_be_clickable((By.CSS_SELECTOR, selector))
-                )
-                element.click()
+                self.selenium_driver.find_element(By.CSS_SELECTOR, selector).click()
                 result["data"] = {"clicked": selector}
             
             elif action == "type":
                 if not selector or not text:
                     raise ValueError("Selector and text required for type action")
-                element = WebDriverWait(self.selenium_driver, 10).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, selector))
-                )
-                element.clear()
-                element.send_keys(text)
+                el = self.selenium_driver.find_element(By.CSS_SELECTOR, selector)
+                el.clear()
+                el.send_keys(text)
                 result["data"] = {"typed": text, "selector": selector}
             
             elif action == "search":
@@ -326,17 +324,13 @@ class WebBrowserController:
                     self.selenium_driver.get("https://www.google.com")
                 
                 # Search
-                search_box = self.selenium_driver.find_element(By.NAME, "q")
-                search_box.clear()
-                search_box.send_keys(text)
-                search_box.send_keys(Keys.RETURN)
+                box = self.selenium_driver.find_element(By.NAME, "q")
+                box.clear()
+                box.send_keys(text)
+                box.submit()
                 
-                # Wait for results
-                WebDriverWait(self.selenium_driver, 10).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, "div[data-header-feature] h3"))
-                )
-                
-                # Extract results
+    
+                # Get search results
                 results = []
                 result_elements = self.selenium_driver.find_elements(By.CSS_SELECTOR, "div[data-header-feature] h3")[:10]
                 for element in result_elements:
@@ -386,6 +380,15 @@ class WebBrowserController:
     async def scrape_website(self, url: str, extract_type: str = "text") -> Dict:
         """Scrape website content using requests + BeautifulSoup (faster for simple scraping)"""
         try:
+            try:
+                import requests  # type: ignore
+            except Exception as e:
+                return {"success": False, "error": f"requests not installed: {e}"}
+            try:
+                from bs4 import BeautifulSoup  # type: ignore
+            except Exception as e:
+                return {"success": False, "error": f"beautifulsoup4 not installed: {e}"}
+            
             headers = {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
             }

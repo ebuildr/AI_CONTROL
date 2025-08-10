@@ -13,7 +13,6 @@ from datetime import datetime
 from typing import Dict, List, Optional, Any
 from pathlib import Path
 import psutil
-import winshell
 from loguru import logger
 
 # Windows-specific imports
@@ -268,19 +267,11 @@ class PCController:
                 }
             
             # Execute command
-            if platform.system() == "Windows":
-                process = await asyncio.create_subprocess_shell(
-                    command,
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE,
-                    shell=True
-                )
-            else:
-                process = await asyncio.create_subprocess_shell(
-                    command,
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE
-                )
+            process = await asyncio.create_subprocess_shell(
+                command,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
             
             stdout, stderr = await process.communicate()
             

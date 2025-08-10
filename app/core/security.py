@@ -7,7 +7,8 @@ import secrets
 import re
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Set
-import jwt
+from jose import jwt, JWTError
+from jose.exceptions import ExpiredSignatureError
 from passlib.context import CryptContext
 from loguru import logger
 
@@ -155,9 +156,9 @@ class SecurityManager:
         try:
             payload = jwt.decode(token, self.secret_key, algorithms=["HS256"])
             return payload
-        except jwt.ExpiredSignatureError:
+        except ExpiredSignatureError:
             raise Exception("Token has expired")
-        except jwt.JWTError:
+        except JWTError:
             raise Exception("Invalid token")
     
     def hash_password(self, password: str) -> str:
@@ -172,7 +173,7 @@ class SecurityManager:
         """Sanitize user input"""
         try:
             # Remove potentially dangerous characters
-            sanitized = re.sub(r'[<>"\';\\]', '', user_input)
+            sanitized = re.sub(r'[<>"\'\\;\\]', '', user_input)
             
             # Limit length
             if len(sanitized) > 1000:

@@ -17,7 +17,6 @@ aiohttp==3.9.1
 playwright==1.40.0
 selenium==4.15.2
 beautifulsoup4==4.12.2
-lxml==4.9.3
 
 # System and process control
 psutil==5.9.6
@@ -25,13 +24,14 @@ watchdog==3.0.0
 schedule==1.2.0
 
 # Windows-specific libraries
-pywin32==306
-wmi==1.5.1
-winshell==0.6
+pywin32==306; sys_platform == "win32"
+wmi==1.5.1; sys_platform == "win32"
+winshell==0.6; sys_platform == "win32"
 
 # File and data handling
 pathlib2==2.3.7
 pydantic==2.5.0
+pydantic-settings==2.1.0
 python-dotenv==1.0.0
 toml==0.10.2
 
@@ -42,7 +42,6 @@ alembic==1.13.0
 # Security and authentication
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
-python-multipart==0.0.6
 
 # Logging and monitoring
 loguru==0.7.2
