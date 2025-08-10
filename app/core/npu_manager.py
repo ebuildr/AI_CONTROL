@@ -119,7 +119,7 @@ class NPUManager:
             
             # Also check via PowerShell WMI for dedicated NPU devices
             cmd = [
-                "powershell", "-Command",
+                "powershell.exe", "-ExecutionPolicy", "Bypass", "-Command",
                 "Get-WmiObject -Class Win32_PnPEntity | Where-Object {$_.Name -like '*AI Boost*' -or $_.Name -like '*NPU*' -or $_.Name -like '*Neural*'} | ConvertTo-Json"
             ]
             
@@ -216,8 +216,8 @@ class NPUManager:
         try:
             # Try multiple methods to get processor info (WMIC is deprecated)
             commands = [
-                ["powershell", "-Command", "(Get-WmiObject -Class Win32_Processor).Name"],
-                ["powershell", "-Command", "Get-ComputerInfo | Select-Object -ExpandProperty CsProcessors"]
+                ["powershell.exe", "-ExecutionPolicy", "Bypass", "-Command", "(Get-WmiObject -Class Win32_Processor).Name"],
+                ["powershell.exe", "-ExecutionPolicy", "Bypass", "-Command", "Get-ComputerInfo | Select-Object -ExpandProperty CsProcessors"]
             ]
             
             for cmd in commands:

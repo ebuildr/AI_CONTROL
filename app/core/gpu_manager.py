@@ -168,8 +168,9 @@ class GPUManager:
         try:
             # Try multiple methods to detect GPUs (WMIC is deprecated, use PowerShell)
             commands = [
-                ["powershell", "-Command", f"Get-WmiObject -Class Win32_VideoController | Where-Object {{$_.Name -like '*{vendor_filter}*'}} | Select-Object Name, AdapterRAM, DriverVersion | ConvertTo-Json"],
-                ["powershell", "-Command", f"Get-WmiObject -Class Win32_VideoController | ConvertTo-Json"]
+                ["powershell.exe", "-ExecutionPolicy", "Bypass", "-Command", f"Get-WmiObject -Class Win32_VideoController | Where-Object {{$_.Name -like '*{vendor_filter}*'}} | Select-Object Name, AdapterRAM, DriverVersion | ConvertTo-Json"],
+                ["powershell.exe", "-ExecutionPolicy", "Bypass", "-Command", f"Get-WmiObject -Class Win32_VideoController | ConvertTo-Json"],
+                ["powershell.exe", "-ExecutionPolicy", "Bypass", "-Command", f"(Get-WmiObject -Class Win32_VideoController).Name"]
             ]
             
             for cmd in commands:
@@ -211,6 +212,24 @@ class GPUManager:
                                         gpus.append(gpu_info)
                             except json.JSONDecodeError:
                                 continue
+                        
+                        # Handle simple text output (like from .Name command)
+                        elif output and vendor_filter.lower() in output.lower():
+                            lines = output.split('\n')
+                            for line in lines:
+                                line = line.strip()
+                                if line and vendor_filter.lower() in line.lower():
+                                    gpu_info = {
+                                        "type": f"{vendor_filter} GPU",
+                                        "name": line,
+                                        "vendor": vendor_filter,
+                                        "device_id": "",
+                                        "driver_version": "Unknown",
+                                        "memory_total": 0,
+                                        "status": "Available"
+                                    }
+                                    gpus.append(gpu_info)
+                                    break
                         
                         if gpus:  # If we found GPUs, break out of command loop
                             break
