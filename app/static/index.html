@@ -524,6 +524,14 @@
                             class="w-full mt-4 px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600 transition-colors">
                         🏃 Run NPU Benchmark
                     </button>
+
+                    <!-- NPU Benchmark Output -->
+                    <div class="mt-3 p-3 bg-white/10 rounded text-white/90" x-show="npuOutput">
+                        <div class="text-sm" x-text="npuOutput"></div>
+                        <div class="text-xs opacity-80 mt-2" x-show="lastNPUBenchmark">
+                            <pre x-text="JSON.stringify(lastNPUBenchmark, null, 2)"></pre>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- GPU Status -->
@@ -631,6 +639,14 @@
                             class="w-full mt-4 px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600 transition-colors">
                         🏃 Run GPU Benchmark
                     </button>
+
+                    <!-- GPU Benchmark Output -->
+                    <div class="mt-3 p-3 bg-white/10 rounded text-white/90" x-show="gpuOutput">
+                        <div class="text-sm" x-text="gpuOutput"></div>
+                        <div class="text-xs opacity-80 mt-2" x-show="lastGPUBenchmark">
+                            <pre x-text="JSON.stringify(lastGPUBenchmark, null, 2)"></pre>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Model Optimization -->
@@ -888,11 +904,15 @@
                 npuStatus: { npu_available: false, device_count: 0, devices: [] },
                 npuPerformance: { utilization: 0 },
                 npuCapabilities: {},
+                npuOutput: '',
+                lastNPUBenchmark: null,
                 
                 // GPU
                 gpuStatus: { gpus_available: false, device_count: 0, devices: [], frameworks: {} },
                 gpuPerformance: { devices: [] },
                 gpuCapabilities: {},
+                gpuOutput: '',
+                lastGPUBenchmark: null,
                 
                 // Hardware Acceleration
                 selectedOptimizeModel: '',
@@ -1199,10 +1219,13 @@
                         this.npuOutput = 'Running NPU benchmark...';
                         const response = await fetch('/npu/benchmark', { method: 'POST' });
                         const data = await response.json();
+                        this.lastNPUBenchmark = data;
                         this.optimizationResult = data;
                         
                         if (data.success) {
-                            this.npuOutput = `Benchmark completed! Execution time: ${data.execution_time.toFixed(3)}s, TOPS: ${data.tops_achieved}`;
+                            const timeStr = (data.execution_time !== undefined ? Number(data.execution_time).toFixed(3) + 's' : 'N/A');
+                            const topsStr = (data.tops_achieved !== undefined ? data.tops_achieved : 'N/A');
+                            this.npuOutput = `Benchmark completed! Execution time: ${timeStr}, TOPS: ${topsStr}`;
                         } else {
                             this.npuOutput = `Benchmark failed: ${data.error}`;
                         }
@@ -1267,18 +1290,21 @@
                 
                 async runGPUBenchmark() {
                     try {
+                        this.gpuOutput = 'Running GPU benchmark...';
                         const response = await fetch('/gpu/benchmark', { method: 'POST' });
                         const data = await response.json();
+                        this.lastGPUBenchmark = data;
                         this.optimizationResult = data;
-                        
+
                         if (data.success) {
-                            alert(`GPU benchmark completed! Performance score: ${data.performance_score}`);
+                            const score = (data.performance_score !== undefined ? data.performance_score : 'N/A');
+                            this.gpuOutput = `GPU benchmark completed! Performance score: ${score}`;
                         } else {
-                            alert(`Benchmark failed: ${data.error}`);
+                            this.gpuOutput = `Benchmark failed: ${data.error}`;
                         }
                     } catch (error) {
                         console.error('GPU benchmark failed:', error);
-                        alert(`Benchmark error: ${error.message}`);
+                        this.gpuOutput = `Benchmark error: ${error.message}`;
                     }
                 },
                 
