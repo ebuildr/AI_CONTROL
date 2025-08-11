@@ -25,9 +25,15 @@ class NPUManager:
         self.npu_capabilities = {}
         self.performance_metrics = {}
         self.ollama_npu_config = {}
+        self._initialized = False
+        logger.info("🔧 NPU Manager instance created")
         
     async def initialize(self):
         """Initialize NPU manager and detect hardware"""
+        if self._initialized:
+            logger.warning("NPU Manager already initialized, skipping...")
+            return
+            
         try:
             logger.info("🔍 Detecting NPU hardware...")
             
@@ -37,9 +43,11 @@ class NPUManager:
             # Configure Ollama for NPU if available
             if self.npu_available:
                 await self._configure_ollama_npu()
-                logger.info("✅ NPU Manager initialized with NPU support")
+                logger.info(f"✅ NPU Manager initialized with NPU support - {len(self.npu_devices)} device(s)")
             else:
                 logger.info("ℹ️ NPU Manager initialized (no NPU detected)")
+                
+            self._initialized = True
                 
         except Exception as e:
             logger.error(f"❌ Failed to initialize NPU Manager: {e}")
@@ -48,6 +56,9 @@ class NPUManager:
     async def _detect_npu_hardware(self):
         """Detect available NPU hardware"""
         try:
+            # Clear existing devices
+            self.npu_devices = []
+            
             # Use the unified hardware detector
             hardware_info = HardwareDetector.detect_all_hardware()
             
@@ -72,14 +83,19 @@ class NPUManager:
                 
                 # Get NPU capabilities
                 await self._get_npu_capabilities()
+                
+                logger.info(f"✅ NPU detection complete - Available: {self.npu_available}, Devices: {self.npu_devices}")
             else:
                 self.npu_devices = []
                 self.npu_available = False
+                logger.warning("❌ No NPU detected by hardware detector")
             
             logger.info(f"📊 Found {len(self.npu_devices)} NPU device(s)")
             
         except Exception as e:
             logger.error(f"NPU detection failed: {e}")
+            self.npu_available = False
+            self.npu_devices = []
     
     async def _detect_intel_npu(self) -> Optional[Dict]:
         """Detect Intel NPU (AI Boost)"""
@@ -441,6 +457,14 @@ class NPUManager:
     
     async def get_npu_status(self) -> Dict:
         """Get comprehensive NPU status"""
+        # Log current state for debugging
+        logger.info(f"NPU Status Request - Available: {self.npu_available}, Devices: {len(self.npu_devices)}, Initialized: {self._initialized}")
+        
+        # If not initialized, initialize now
+        if not self._initialized:
+            logger.warning("NPU not initialized, initializing now...")
+            await self.initialize()
+        
         return {
             "npu_available": self.npu_available,
             "device_count": len(self.npu_devices),
@@ -449,6 +473,14 @@ class NPUManager:
             "ollama_config": self.ollama_npu_config,
             "performance_metrics": await self.get_npu_performance_metrics()
         }
+    
+    def _should_have_npu(self) -> bool:
+        """Check if system should have NPU based on processor"""
+        try:
+            hardware_info = HardwareDetector.detect_all_hardware()
+            return hardware_info["processor"].get("has_npu", False)
+        except:
+            return False
     
     async def cleanup(self):
         """Cleanup NPU resources"""

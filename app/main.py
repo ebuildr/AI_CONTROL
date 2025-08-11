@@ -28,7 +28,7 @@ from app.core.web_browser import WebBrowserController
 from app.core.security import SecurityManager
 from app.core.npu_manager import NPUManager
 from app.core.gpu_manager import GPUManager
-from app.core.realtime_monitor import realtime_monitor
+from app.core.realtime_monitor import RealtimeMonitor
 from app.models.requests import ChatRequest, PCCommandRequest, WebBrowseRequest
 from app.models.responses import ChatResponse, PCCommandResponse, WebBrowseResponse
 from app.utils.config import get_settings
@@ -66,6 +66,9 @@ web_browser = WebBrowserController()
 security_manager = SecurityManager()
 npu_manager = NPUManager()
 gpu_manager = GPUManager()
+
+# Create realtime monitor instance
+realtime_monitor = RealtimeMonitor()
 
 # Mount static files
 static_path = Path(__file__).parent / "static"
@@ -371,6 +374,7 @@ async def get_error_history(hours: int = 24):
 async def get_npu_status():
     """Get NPU hardware status and capabilities"""
     try:
+        logger.debug(f"NPU Manager instance ID: {id(npu_manager)}")
         status = await npu_manager.get_npu_status()
         return status
     except Exception as e:

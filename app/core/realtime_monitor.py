@@ -222,22 +222,52 @@ class RealtimeMonitor:
         return metrics
     
     async def _get_npu_metrics(self) -> Dict:
-        """Get NPU metrics (simulated for now)"""
-        # TODO: Implement real NPU metrics when APIs become available
-        # For now, we'll simulate based on AI workload
+        """Get NPU metrics from NPU manager"""
+        # Import here to avoid circular imports
+        from app.main import npu_manager
         
-        ai_processes = await self._get_ai_processes()
-        npu_usage = min(len(ai_processes) * 15, 100)  # Simulate usage based on AI processes
-        
-        return {
-            "available": True,
-            "usage_percent": npu_usage,
-            "memory_used_mb": npu_usage * 10,  # Simulate memory usage
-            "temperature": 45 + (npu_usage * 0.2),  # Simulate temperature
-            "power_watts": 2 + (npu_usage * 0.08),  # NPUs are power efficient
-            "inference_throughput": npu_usage * 100,  # Inferences per second
-            "active_models": len(ai_processes)
-        }
+        try:
+            # Get NPU status from the manager
+            npu_status = await npu_manager.get_npu_status()
+            
+            if npu_status["npu_available"]:
+                # Get performance metrics
+                perf_metrics = npu_status.get("performance_metrics", {})
+                
+                return {
+                    "available": True,
+                    "usage_percent": perf_metrics.get("utilization", 0),
+                    "memory_used_mb": perf_metrics.get("memory_usage", {}).get("used_mb", 0),
+                    "temperature": perf_metrics.get("temperature", 0),
+                    "power_watts": perf_metrics.get("power_consumption", 0),
+                    "inference_throughput": perf_metrics.get("inference_throughput", 0),
+                    "active_models": len(perf_metrics.get("active_models", [])),
+                    "devices": npu_status.get("devices", [])
+                }
+            else:
+                return {
+                    "available": False,
+                    "usage_percent": 0,
+                    "memory_used_mb": 0,
+                    "temperature": 0,
+                    "power_watts": 0,
+                    "inference_throughput": 0,
+                    "active_models": 0,
+                    "devices": []
+                }
+                
+        except Exception as e:
+            logger.error(f"Error getting NPU metrics: {e}")
+            return {
+                "available": False,
+                "usage_percent": 0,
+                "memory_used_mb": 0,
+                "temperature": 0,
+                "power_watts": 0,
+                "inference_throughput": 0,
+                "active_models": 0,
+                "devices": []
+            }
     
     async def _get_memory_metrics(self) -> Dict:
         """Get system memory metrics"""
