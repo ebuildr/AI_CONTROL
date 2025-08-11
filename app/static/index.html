@@ -107,6 +107,11 @@
                         class="px-6 py-3 transition-colors">
                     ⚡ AI Acceleration
                 </button>
+                <button @click="activeTab = 'monitoring'" 
+                        :class="activeTab === 'monitoring' ? 'bg-white/20' : 'bg-transparent hover:bg-white/10'"
+                        class="px-6 py-3 transition-colors">
+                    📊 Real-time Monitor
+                </button>
             </div>
         </div>
     </nav>
@@ -668,6 +673,166 @@
                 </div>
             </div>
         </div>
+
+        <!-- Real-time Monitoring Tab -->
+        <div class="tab-content" :class="activeTab === 'monitoring' ? 'active' : ''">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- CPU & Memory Monitor -->
+                <div class="glass-effect rounded-lg p-6">
+                    <h2 class="text-2xl font-bold text-white mb-4">🖥️ CPU & Memory</h2>
+                    
+                    <div class="space-y-4">
+                        <!-- CPU Usage -->
+                        <div>
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-white font-medium">CPU Usage</span>
+                                <span class="text-white" x-text="(realtimeMetrics.cpu?.usage_percent || 0).toFixed(1) + '%'"></span>
+                            </div>
+                            <div class="w-full bg-white/20 rounded-full h-3">
+                                <div class="bg-blue-500 h-3 rounded-full transition-all duration-500" 
+                                     :style="`width: ${realtimeMetrics.cpu?.usage_percent || 0}%`"></div>
+                            </div>
+                            <div class="mt-2 grid grid-cols-4 gap-2">
+                                <template x-for="(usage, index) in (realtimeMetrics.cpu?.per_core_usage || [])" :key="index">
+                                    <div class="text-xs text-white/70">
+                                        <div class="text-center">C<span x-text="index"></span></div>
+                                        <div class="w-full bg-white/10 rounded h-8">
+                                            <div class="bg-blue-400 rounded transition-all duration-500" 
+                                                 :style="`height: ${usage}%; width: 100%`"></div>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                        
+                        <!-- Memory Usage -->
+                        <div>
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-white font-medium">Memory Usage</span>
+                                <span class="text-white" x-text="`${(realtimeMetrics.memory?.used_gb || 0).toFixed(1)}GB / ${(realtimeMetrics.memory?.total_gb || 0).toFixed(1)}GB`"></span>
+                            </div>
+                            <div class="w-full bg-white/20 rounded-full h-3">
+                                <div class="bg-green-500 h-3 rounded-full transition-all duration-500" 
+                                     :style="`width: ${realtimeMetrics.memory?.percent || 0}%`"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- CPU Temperature & Frequency -->
+                        <div class="grid grid-cols-2 gap-4 text-sm text-white/80">
+                            <div x-show="realtimeMetrics.cpu?.temperature">
+                                <span class="font-medium">Temperature:</span> 
+                                <span x-text="(realtimeMetrics.cpu?.temperature || 0).toFixed(1) + '°C'"></span>
+                            </div>
+                            <div x-show="realtimeMetrics.cpu?.frequency_current">
+                                <span class="font-medium">Frequency:</span> 
+                                <span x-text="(realtimeMetrics.cpu?.frequency_current / 1000 || 0).toFixed(2) + ' GHz'"></span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- CPU History Chart -->
+                    <div class="mt-6">
+                        <canvas id="cpuChart" width="400" height="200"></canvas>
+                    </div>
+                </div>
+                
+                <!-- NPU & GPU Monitor -->
+                <div class="glass-effect rounded-lg p-6">
+                    <h2 class="text-2xl font-bold text-white mb-4">⚡ NPU & GPU</h2>
+                    
+                    <div class="space-y-4">
+                        <!-- NPU Usage -->
+                        <div x-show="realtimeMetrics.npu?.available">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-white font-medium">NPU Usage</span>
+                                <span class="text-white" x-text="(realtimeMetrics.npu?.usage_percent || 0).toFixed(1) + '%'"></span>
+                            </div>
+                            <div class="w-full bg-white/20 rounded-full h-3">
+                                <div class="bg-cyan-500 h-3 rounded-full transition-all duration-500" 
+                                     :style="`width: ${realtimeMetrics.npu?.usage_percent || 0}%`"></div>
+                            </div>
+                            <div class="mt-2 text-sm text-white/70">
+                                <span>Power: </span><span x-text="(realtimeMetrics.npu?.power_watts || 0).toFixed(1) + 'W'"></span>
+                                <span class="ml-4">Throughput: </span><span x-text="(realtimeMetrics.npu?.inference_throughput || 0) + ' inf/s'"></span>
+                            </div>
+                        </div>
+                        
+                        <!-- GPU Usage -->
+                        <template x-for="gpu in (realtimeMetrics.gpu?.devices || [])" :key="gpu.id">
+                            <div>
+                                <div class="text-white font-medium mb-2" x-text="gpu.name"></div>
+                                
+                                <!-- GPU Core Usage -->
+                                <div class="flex justify-between items-center mb-1">
+                                    <span class="text-white/70 text-sm">GPU Usage</span>
+                                    <span class="text-white text-sm" x-text="(gpu.gpu_usage || 0) + '%'"></span>
+                                </div>
+                                <div class="w-full bg-white/20 rounded-full h-2 mb-2">
+                                    <div class="bg-orange-500 h-2 rounded-full transition-all duration-500" 
+                                         :style="`width: ${gpu.gpu_usage || 0}%`"></div>
+                                </div>
+                                
+                                <!-- GPU Memory Usage -->
+                                <div class="flex justify-between items-center mb-1">
+                                    <span class="text-white/70 text-sm">Memory Usage</span>
+                                    <span class="text-white text-sm" x-text="`${gpu.memory_used_gb}GB / ${gpu.memory_total_gb}GB`"></span>
+                                </div>
+                                <div class="w-full bg-white/20 rounded-full h-2 mb-3">
+                                    <div class="bg-yellow-500 h-2 rounded-full transition-all duration-500" 
+                                         :style="`width: ${gpu.memory_usage || 0}%`"></div>
+                                </div>
+                                
+                                <!-- GPU Details -->
+                                <div class="grid grid-cols-2 gap-2 text-xs text-white/70">
+                                    <div x-show="gpu.temperature">Temp: <span x-text="gpu.temperature + '°C'"></span></div>
+                                    <div x-show="gpu.power_watts">Power: <span x-text="gpu.power_watts + 'W'"></span></div>
+                                    <div x-show="gpu.graphics_clock_mhz">Core: <span x-text="gpu.graphics_clock_mhz + ' MHz'"></span></div>
+                                    <div x-show="gpu.fan_speed_percent">Fan: <span x-text="gpu.fan_speed_percent + '%'"></span></div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                    
+                    <!-- GPU History Chart -->
+                    <div class="mt-6">
+                        <canvas id="gpuChart" width="400" height="200"></canvas>
+                    </div>
+                </div>
+                
+                <!-- AI Processes -->
+                <div class="glass-effect rounded-lg p-6 lg:col-span-2">
+                    <h2 class="text-2xl font-bold text-white mb-4">🧠 AI Processes</h2>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-white">
+                            <thead>
+                                <tr class="border-b border-white/20">
+                                    <th class="text-left p-2">Process</th>
+                                    <th class="text-right p-2">PID</th>
+                                    <th class="text-right p-2">CPU %</th>
+                                    <th class="text-right p-2">Memory %</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="process in (realtimeMetrics.processes || [])" :key="process.pid">
+                                    <tr class="border-b border-white/10">
+                                        <td class="p-2" x-text="process.name"></td>
+                                        <td class="text-right p-2" x-text="process.pid"></td>
+                                        <td class="text-right p-2" x-text="(process.cpu_percent || 0).toFixed(1) + '%'"></td>
+                                        <td class="text-right p-2" x-text="(process.memory_percent || 0).toFixed(1) + '%'"></td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                        
+                        <div x-show="!realtimeMetrics.processes || realtimeMetrics.processes.length === 0" 
+                             class="text-center text-white/50 py-4">
+                            No AI processes detected
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </main>
 
     <!-- Footer -->
@@ -734,6 +899,12 @@
                 selectedAccelerationType: 'auto',
                 optimizationResult: null,
                 
+                // Real-time monitoring
+                realtimeMetrics: {},
+                monitoringWebSocket: null,
+                cpuChart: null,
+                gpuChart: null,
+                
                 // Initialize
                 async init() {
                     await this.checkHealth();
@@ -749,6 +920,9 @@
                         this.refreshNPUStatus();
                         this.refreshGPUStatus();
                     }, 60000);
+                    
+                    // Initialize real-time monitoring
+                    this.initRealtimeMonitoring();
                 },
                 
                 // Health Check
@@ -1141,9 +1315,165 @@
                         console.error('Model optimization failed:', error);
                         alert(`Optimization error: ${error.message}`);
                     }
+                },
+                
+                // Real-time Monitoring Functions
+                initRealtimeMonitoring() {
+                    // Initialize WebSocket connection
+                    const wsUrl = `ws://${window.location.host}/ws/monitor`;
+                    this.monitoringWebSocket = new WebSocket(wsUrl);
+                    
+                    this.monitoringWebSocket.onopen = () => {
+                        console.log('Real-time monitoring connected');
+                        // Request history data
+                        this.monitoringWebSocket.send('get_history');
+                    };
+                    
+                    this.monitoringWebSocket.onmessage = (event) => {
+                        const message = JSON.parse(event.data);
+                        
+                        if (message.type === 'update' || message.type === 'initial') {
+                            this.realtimeMetrics = message.data;
+                            this.updateCharts();
+                        } else if (message.type === 'history') {
+                            this.initializeCharts(message.data);
+                        }
+                    };
+                    
+                    this.monitoringWebSocket.onclose = () => {
+                        console.log('Real-time monitoring disconnected');
+                        // Attempt reconnection after 5 seconds
+                        setTimeout(() => this.initRealtimeMonitoring(), 5000);
+                    };
+                    
+                    this.monitoringWebSocket.onerror = (error) => {
+                        console.error('WebSocket error:', error);
+                    };
+                    
+                    // Send periodic pings to keep connection alive
+                    setInterval(() => {
+                        if (this.monitoringWebSocket && this.monitoringWebSocket.readyState === WebSocket.OPEN) {
+                            this.monitoringWebSocket.send('ping');
+                        }
+                    }, 30000);
+                },
+                
+                initializeCharts(historyData) {
+                    // Initialize CPU chart
+                    const cpuCanvas = document.getElementById('cpuChart');
+                    if (cpuCanvas) {
+                        const cpuCtx = cpuCanvas.getContext('2d');
+                        this.cpuChart = new Chart(cpuCtx, {
+                            type: 'line',
+                            data: {
+                                labels: historyData.cpu.map((_, i) => i),
+                                datasets: [{
+                                    label: 'CPU Usage %',
+                                    data: historyData.cpu.map(d => d[1]),
+                                    borderColor: 'rgb(59, 130, 246)',
+                                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                                    tension: 0.4
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                scales: {
+                                    y: {
+                                        beginAtZero: true,
+                                        max: 100,
+                                        ticks: { color: 'rgba(255, 255, 255, 0.7)' },
+                                        grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                                    },
+                                    x: {
+                                        ticks: { color: 'rgba(255, 255, 255, 0.7)' },
+                                        grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                                    }
+                                },
+                                plugins: {
+                                    legend: {
+                                        display: false
+                                    }
+                                }
+                            }
+                        });
+                    }
+                    
+                    // Initialize GPU chart
+                    const gpuCanvas = document.getElementById('gpuChart');
+                    if (gpuCanvas) {
+                        const gpuCtx = gpuCanvas.getContext('2d');
+                        this.gpuChart = new Chart(gpuCtx, {
+                            type: 'line',
+                            data: {
+                                labels: historyData.gpu.map((_, i) => i),
+                                datasets: [{
+                                    label: 'GPU Usage %',
+                                    data: historyData.gpu.map(d => d[1]),
+                                    borderColor: 'rgb(251, 146, 60)',
+                                    backgroundColor: 'rgba(251, 146, 60, 0.1)',
+                                    tension: 0.4
+                                }, {
+                                    label: 'NPU Usage %',
+                                    data: historyData.npu.map(d => d[1]),
+                                    borderColor: 'rgb(6, 182, 212)',
+                                    backgroundColor: 'rgba(6, 182, 212, 0.1)',
+                                    tension: 0.4
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                scales: {
+                                    y: {
+                                        beginAtZero: true,
+                                        max: 100,
+                                        ticks: { color: 'rgba(255, 255, 255, 0.7)' },
+                                        grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                                    },
+                                    x: {
+                                        ticks: { color: 'rgba(255, 255, 255, 0.7)' },
+                                        grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                                    }
+                                },
+                                plugins: {
+                                    legend: {
+                                        labels: { color: 'rgba(255, 255, 255, 0.8)' }
+                                    }
+                                }
+                            }
+                        });
+                    }
+                },
+                
+                updateCharts() {
+                    // Update CPU chart
+                    if (this.cpuChart && this.realtimeMetrics.cpu) {
+                        const cpuData = this.cpuChart.data.datasets[0].data;
+                        cpuData.push(this.realtimeMetrics.cpu.usage_percent);
+                        if (cpuData.length > 60) cpuData.shift();
+                        this.cpuChart.update('none');
+                    }
+                    
+                    // Update GPU chart
+                    if (this.gpuChart && this.realtimeMetrics.gpu) {
+                        const gpuData = this.gpuChart.data.datasets[0].data;
+                        const npuData = this.gpuChart.data.datasets[1].data;
+                        
+                        gpuData.push(this.realtimeMetrics.gpu.average_usage || 0);
+                        npuData.push(this.realtimeMetrics.npu?.usage_percent || 0);
+                        
+                        if (gpuData.length > 60) gpuData.shift();
+                        if (npuData.length > 60) npuData.shift();
+                        
+                        this.gpuChart.update('none');
+                    }
                 }
             }
         }
     </script>
+    
+    <!-- Chart.js for real-time charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </body>
 </html>

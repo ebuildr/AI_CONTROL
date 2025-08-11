@@ -12,7 +12,7 @@ from datetime import datetime
 from typing import Dict, List, Optional, Union
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks, UploadFile, File
+from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks, UploadFile, File, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -28,6 +28,7 @@ from app.core.web_browser import WebBrowserController
 from app.core.security import SecurityManager
 from app.core.npu_manager import NPUManager
 from app.core.gpu_manager import GPUManager
+from app.core.realtime_monitor import realtime_monitor
 from app.models.requests import ChatRequest, PCCommandRequest, WebBrowseRequest
 from app.models.responses import ChatResponse, PCCommandResponse, WebBrowseResponse
 from app.utils.config import get_settings
@@ -90,6 +91,9 @@ async def startup_event():
     # Initialize web browser
     await web_browser.initialize()
     
+    # Start real-time monitoring
+    await realtime_monitor.start_monitoring()
+    
     logger.info("✅ AI Control System ready!")
 
 
@@ -98,6 +102,7 @@ async def shutdown_event():
     """Cleanup on shutdown"""
     logger.info("🛑 Shutting down AI Control System...")
     
+    await realtime_monitor.cleanup()
     await npu_manager.cleanup()
     await gpu_manager.cleanup()
     await ai_manager.cleanup()
@@ -449,6 +454,70 @@ async def optimize_model_for_gpu(model_name: str, gpu_type: str = "auto"):
     except Exception as e:
         log_error_context(e, f"GPU model optimization failed for {model_name}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# WebSocket endpoint for real-time monitoring
+@app.websocket("/ws/monitor")
+async def websocket_monitoring(websocket: WebSocket):
+    """WebSocket endpoint for real-time hardware monitoring"""
+    await websocket.accept()
+    logger.info(f"WebSocket client connected: {websocket.client}")
+    
+    try:
+        # Send initial metrics
+        initial_metrics = realtime_monitor.get_current_metrics()
+        await websocket.send_json({
+            "type": "initial",
+            "data": initial_metrics
+        })
+        
+        # Define callback for real-time updates
+        async def send_update(metrics):
+            try:
+                await websocket.send_json({
+                    "type": "update",
+                    "data": metrics
+                })
+            except:
+                # Client disconnected
+                pass
+        
+        # Register callback
+        realtime_monitor.add_update_callback(send_update)
+        
+        # Keep connection alive
+        while True:
+            # Wait for client messages (mainly for ping/pong)
+            data = await websocket.receive_text()
+            if data == "ping":
+                await websocket.send_text("pong")
+            elif data == "get_history":
+                history = realtime_monitor.get_history()
+                await websocket.send_json({
+                    "type": "history",
+                    "data": history
+                })
+                
+    except WebSocketDisconnect:
+        logger.info(f"WebSocket client disconnected: {websocket.client}")
+    except Exception as e:
+        logger.error(f"WebSocket error: {e}")
+    finally:
+        # Remove callback
+        realtime_monitor.remove_update_callback(send_update)
+
+
+# API endpoint for monitoring data
+@app.get("/monitor/realtime")
+async def get_realtime_metrics():
+    """Get current real-time monitoring metrics"""
+    return realtime_monitor.get_current_metrics()
+
+
+@app.get("/monitor/history")
+async def get_monitoring_history():
+    """Get monitoring history"""
+    return realtime_monitor.get_history()
 
 
 # Error handlers
