@@ -143,9 +143,18 @@ $gpuList | ConvertTo-Json
                     data = [data]
                 
                 for gpu_data in data:
+                    # Get memory in bytes from AdapterRAM
+                    adapter_ram = gpu_data.get("AdapterRAM", 0)
+                    # Convert to GB properly - AdapterRAM might be negative for large values
+                    if adapter_ram < 0:
+                        # Handle overflow for GPUs with >4GB RAM
+                        memory_gb = 4.0  # Default, will be corrected by nvidia-smi
+                    else:
+                        memory_gb = round(adapter_ram / (1024**3), 2) if adapter_ram > 0 else 0
+                    
                     gpu_info = {
                         "name": gpu_data.get("Name", "Unknown"),
-                        "memory_gb": gpu_data.get("AdapterRAM", 0),
+                        "memory_gb": memory_gb,
                         "driver_version": gpu_data.get("DriverVersion", "Unknown"),
                         "vendor": "Unknown",
                         "type": "integrated"
@@ -191,20 +200,34 @@ $gpuList | ConvertTo-Json
                 for line in lines:
                     parts = line.split(', ')
                     if len(parts) >= 3:
+                        # Extract memory value properly
+                        memory_str = parts[1].strip()
+                        memory_mb = float(memory_str.replace(' MiB', '').replace('MiB', '').strip())
+                        memory_gb = round(memory_mb / 1024, 1)
+                        
                         gpu_info = {
-                            "name": parts[0],
-                            "memory_gb": float(parts[1].replace(' MiB', '')) / 1024,
-                            "driver_version": parts[2],
+                            "name": parts[0].strip(),
+                            "memory_gb": memory_gb,
+                            "driver_version": parts[2].strip(),
                             "vendor": "NVIDIA",
                             "type": "discrete"
                         }
                         
-                        # Avoid duplicates
-                        if not any(g["name"] == gpu_info["name"] for g in gpus):
+                        # Update existing entry or add new one
+                        updated = False
+                        for i, gpu in enumerate(gpus):
+                            if gpu["name"] == gpu_info["name"]:
+                                # Update with more accurate nvidia-smi data
+                                gpus[i]["memory_gb"] = memory_gb
+                                gpus[i]["driver_version"] = gpu_info["driver_version"]
+                                updated = True
+                                break
+                        
+                        if not updated:
                             gpus.append(gpu_info)
                             
-        except:
-            pass
+        except Exception as e:
+            logger.debug(f"nvidia-smi error: {e}")
         
         return gpus
     
